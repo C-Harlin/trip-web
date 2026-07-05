@@ -1,0 +1,249 @@
+import { useMemo, useState, useEffect, useRef } from 'react'
+import { GoogleMap, useJsApiLoader, Polyline, InfoWindow } from '@react-google-maps/api'
+import { itinerary } from '../data/itinerary'
+import type { Activity } from '../types/itinerary'
+import { useMapSync } from '../hooks/useMapSync'
+
+const MAP_CONTAINER_STYLE = { width: '100%', height: '100%' }
+const DEFAULT_CENTER = { lat: -37.0, lng: 145.5 }
+const DEFAULT_ZOOM = 6
+const LIBRARIES: ('marker' | 'places')[] = []
+
+interface Props {
+  isActivityActive: (id: string) => boolean
+  activeDayId: string | null
+  onMarkerClick: (activity: Activity) => void
+  hoveredActivity?: Activity | null
+}
+
+interface MarkerData {
+  activity: Activity
+  color: string
+}
+
+export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredActivity }: Props) {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ''
+  const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? ''
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: apiKey,
+    mapIds: mapId ? [mapId] : [],
+    libraries: LIBRARIES,
+  })
+
+  const { onMapLoad, panToDay } = useMapSync()
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
+  const mapRef = useRef<google.maps.Map | null>(null)
+  const markersRef = useRef<Map<string, google.maps.marker.AdvancedMarkerElement>>(new Map())
+  const prevDayId = useRef<string | null>(null)
+
+  // Pan to day when activeDayId changes
+  useEffect(() => {
+    if (activeDayId && activeDayId !== prevDayId.current && isLoaded) {
+      prevDayId.current = activeDayId
+      panToDay(activeDayId)
+    }
+  }, [activeDayId, isLoaded, panToDay])
+
+  // Highlight hovered marker
+  useEffect(() => {
+    markersRef.current.forEach((marker, id) => {
+      const isHovered = hoveredActivity?.id === id
+      if (isHovered) {
+        marker.zIndex = 999
+        // Scale up if supported
+        if (marker.element) {
+          ;(marker.element as HTMLElement).style.transform = 'scale(1.4)'
+        }
+      } else {
+        marker.zIndex = 1
+        if (marker.element) {
+          ;(marker.element as HTMLElement).style.transform = 'scale(1)'
+        }
+      }
+    })
+  }, [hoveredActivity])
+
+  // Build polylines for each destination (active activities only)
+  const polylines = useMemo(
+    () =>
+      itinerary.destinations.map(dest => ({
+        id: dest.id,
+        color: dest.color,
+        path: dest.days
+          .flatMap(d => d.activities)
+          .filter(a => isActivityActive(a.id) && a.lat != null && a.lng != null)
+          .map(a => ({ lat: a.lat!, lng: a.lng! })),
+      })),
+    [isActivityActive]
+  )
+
+  // Build markers list (active activities with coordinates)
+  const markers = useMemo<MarkerData[]>(
+    () =>
+      itinerary.destinations.flatMap(dest =>
+        dest.days.flatMap(day =>
+          day.activities
+            .filter(a => a.lat != null && a.lng != null && isActivityActive(a.id))
+            .map(a => ({ activity: a, color: dest.color }))
+        )
+      ),
+    [isActivityActive]
+  )
+
+  const handleMapLoad = (map: google.maps.Map) => {
+    mapRef.current = map
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onMapLoad(map as any)
+  }
+
+  // Render Advanced Markers imperatively after map loads
+  const renderMarkersOnMap = (map: google.maps.Map) => {
+    // Clear old markers
+    markersRef.current.forEach(m => { m.map = null })
+    markersRef.current.clear()
+
+    markers.forEach(({ activity, color }) => {
+      if (!activity.lat || !activity.lng) return
+
+      // Create dot element
+      const dot = document.createElement('div')
+      dot.style.cssText = `
+        width: 12px;
+        height: 12px;
+        background: ${color};
+        border: 2px solid rgba(255,255,255,0.9);
+        border-radius: 50%;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+        box-shadow: 0 0 6px ${color}80;
+      `
+
+      const marker = new google.maps.marker.AdvancedMarkerElement({
+        map,
+        position: { lat: activity.lat, lng: activity.lng },
+        title: activity.mapLabel ?? activity.title,
+        content: dot,
+      })
+
+      marker.addListener('click', () => {
+        setSelectedActivity(activity)
+        onMarkerClick(activity)
+      })
+
+      markersRef.current.set(activity.id, marker)
+    })
+  }
+
+  // Re-render markers when markers list or map changes
+  useEffect(() => {
+    if (mapRef.current && isLoaded) {
+      // Check if AdvancedMarkerElement is available (requires mapId)
+      if (typeof google !== 'undefined' && google.maps.marker?.AdvancedMarkerElement) {
+        renderMarkersOnMap(mapRef.current)
+      }
+    }
+    // Cleanup on unmount
+    return () => {
+      markersRef.current.forEach(m => { m.map = null })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markers, isLoaded])
+
+  if (!apiKey) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-card text-muted text-sm gap-4">
+        <div className="text-4xl">🗺️</div>
+        <div className="text-center">
+          <div className="font-medium mb-1">Google Maps 未配置</div>
+          <div className="text-xs opacity-70">请在 .env.local 中设置 VITE_GOOGLE_MAPS_KEY</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-card text-muted text-sm">
+        地图加载失败，请检查 API Key 配置
+      </div>
+    )
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-card text-muted text-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-muted border-t-transparent rounded-full animate-spin" />
+          地图加载中...
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <GoogleMap
+      mapContainerStyle={MAP_CONTAINER_STYLE}
+      center={DEFAULT_CENTER}
+      zoom={DEFAULT_ZOOM}
+      onLoad={handleMapLoad}
+      options={{
+        mapId: mapId || undefined,
+        disableDefaultUI: false,
+        zoomControl: true,
+        streetViewControl: false,
+        mapTypeControl: false,
+        fullscreenControl: false,
+        styles: mapId
+          ? undefined
+          : [
+              { elementType: 'geometry', stylers: [{ color: '#212121' }] },
+              { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+              { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+              { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
+              { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
+              { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
+              { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
+              { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212121' }] },
+            ],
+      }}
+    >
+      {/* Polylines — route lines between active activities */}
+      {polylines.map(line =>
+        line.path.length >= 2 ? (
+          <Polyline
+            key={line.id}
+            path={line.path}
+            options={{
+              strokeColor: line.color,
+              strokeOpacity: 0.65,
+              strokeWeight: 2,
+              geodesic: true,
+            }}
+          />
+        ) : null
+      )}
+
+      {/* InfoWindow for selected marker */}
+      {selectedActivity?.lat && selectedActivity?.lng && (
+        <InfoWindow
+          position={{ lat: selectedActivity.lat, lng: selectedActivity.lng }}
+          onCloseClick={() => setSelectedActivity(null)}
+          options={{ pixelOffset: new window.google.maps.Size(0, -14) }}
+        >
+          <div style={{ color: '#111', maxWidth: 220, padding: '2px 4px' }}>
+            <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 13 }}>
+              {selectedActivity.title}
+            </div>
+            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.4 }}>
+              {selectedActivity.description}
+            </div>
+            <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+              {selectedActivity.time}
+            </div>
+          </div>
+        </InfoWindow>
+      )}
+    </GoogleMap>
+  )
+}
