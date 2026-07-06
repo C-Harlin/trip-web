@@ -21,6 +21,14 @@ interface MarkerData {
   activity: Activity
   color: string
   isActiveDay: boolean
+  sequence: number
+}
+
+interface RouteLine {
+  id: string
+  color: string
+  isActiveDay: boolean
+  path: { lat: number; lng: number }[]
 }
 
 /** 截断标注文字，中文约 7 个字符 */
@@ -28,8 +36,13 @@ function truncateLabel(text: string, max = 7): string {
   return text.length > max ? text.slice(0, max) + '…' : text
 }
 
-/** 创建带中文标注的标记 DOM 元素 */
-function createMarkerElement(color: string, label: string, isActiveDay: boolean): HTMLElement {
+/** 创建带序号和中文标注的标记 DOM 元素 */
+function createMarkerElement(
+  color: string,
+  label: string,
+  isActiveDay: boolean,
+  sequence: number
+): HTMLElement {
   const wrap = document.createElement('div')
   wrap.style.cssText = `
     display: flex;
@@ -39,32 +52,41 @@ function createMarkerElement(color: string, label: string, isActiveDay: boolean)
     transition: transform 0.15s ease;
   `
 
-  // 彩色圆点
+  // 当前天显示清晰序号，非当前天保留低干扰点位。
   const dot = document.createElement('div')
-  const dotSize = isActiveDay ? 13 : 9
+  const dotSize = isActiveDay ? 28 : 8
   dot.style.cssText = `
     width: ${dotSize}px;
     height: ${dotSize}px;
     background: ${color};
-    border: 2px solid rgba(255,255,255,${isActiveDay ? '1' : '0.65'});
+    color: #fff;
+    border: ${isActiveDay ? '2' : '1'}px solid rgba(255,255,255,${isActiveDay ? '1' : '0.38'});
     border-radius: 50%;
-    box-shadow: 0 0 ${isActiveDay ? '10' : '4'}px ${color}${isActiveDay ? 'cc' : '60'};
+    box-shadow: 0 0 ${isActiveDay ? '14' : '3'}px ${color}${isActiveDay ? 'cc' : '50'};
     flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    opacity: ${isActiveDay ? '1' : '0.42'};
   `
+  dot.textContent = isActiveDay ? String(sequence) : ''
 
   // 中文标注
   const lbl = document.createElement('div')
   lbl.style.cssText = `
-    background: rgba(13,17,23,${isActiveDay ? '0.92' : '0.75'});
-    color: ${isActiveDay ? '#fff' : 'rgba(255,255,255,0.6)'};
-    font-size: ${isActiveDay ? '12' : '10'}px;
-    font-weight: ${isActiveDay ? '600' : '400'};
+    display: ${isActiveDay ? 'block' : 'none'};
+    background: rgba(13,17,23,0.92);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
     font-family: system-ui, -apple-system, sans-serif;
     padding: 2px 6px;
     border-radius: 4px;
     margin-top: 4px;
     white-space: nowrap;
-    border: 1px solid ${color}${isActiveDay ? '70' : '30'};
+    border: 1px solid ${color}70;
     line-height: 1.4;
     letter-spacing: 0.02em;
   `
@@ -100,37 +122,25 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
     }
   }, [activeDayId, isLoaded, panToDay])
 
-  // Highlight hovered marker
-  useEffect(() => {
-    markersRef.current.forEach((marker, id) => {
-      const isHovered = hoveredActivity?.id === id
-      if (isHovered) {
-        marker.zIndex = 999
-        // Scale up if supported
-        if (marker.element) {
-          ;(marker.element as HTMLElement).style.transform = 'scale(1.4)'
-        }
-      } else {
-        marker.zIndex = 1
-        if (marker.element) {
-          ;(marker.element as HTMLElement).style.transform = 'scale(1)'
-        }
-      }
-    })
-  }, [hoveredActivity])
-
-  // Build polylines for each destination (active activities only)
-  const polylines = useMemo(
+  // Build one route per day so the map can focus on the active day's sequence.
+  const dayRoutes = useMemo<RouteLine[]>(
     () =>
-      itinerary.destinations.map(dest => ({
-        id: dest.id,
-        color: dest.color,
-        path: dest.days
-          .flatMap(d => d.activities)
-          .filter(a => isActivityActive(a.id) && a.lat != null && a.lng != null)
-          .map(a => ({ lat: a.lat!, lng: a.lng! })),
-      })),
-    [isActivityActive]
+      itinerary.destinations.flatMap(dest =>
+        dest.days.map(day => ({
+          id: day.id,
+          color: dest.color,
+          isActiveDay: day.id === activeDayId,
+          path: day.activities
+            .filter(a => isActivityActive(a.id) && a.lat != null && a.lng != null)
+            .map(a => ({ lat: a.lat!, lng: a.lng! })),
+        }))
+      ),
+    [isActivityActive, activeDayId]
+  )
+
+  const visibleRoutes = useMemo(
+    () => activeDayId ? dayRoutes.filter(line => line.isActiveDay) : dayRoutes,
+    [activeDayId, dayRoutes]
   )
 
   // Build markers list (active activities with coordinates)
@@ -140,15 +150,39 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
         dest.days.flatMap(day =>
           day.activities
             .filter(a => a.lat != null && a.lng != null && isActivityActive(a.id))
-            .map(a => ({
+            .map((a, index) => ({
               activity: a,
               color: dest.color,
               isActiveDay: day.id === activeDayId,
+              sequence: index + 1,
             }))
         )
       ),
     [isActivityActive, activeDayId]
   )
+
+  const activeMarkerIds = useMemo(
+    () => new Set(markers.filter(m => m.isActiveDay).map(m => m.activity.id)),
+    [markers]
+  )
+
+  // Highlight hovered marker without losing active-day stacking priority.
+  useEffect(() => {
+    markersRef.current.forEach((marker, id) => {
+      const isHovered = hoveredActivity?.id === id
+      if (isHovered) {
+        marker.zIndex = 999
+        if (marker.element) {
+          ;(marker.element as HTMLElement).style.transform = 'scale(1.35)'
+        }
+      } else {
+        marker.zIndex = activeMarkerIds.has(id) ? 20 : 1
+        if (marker.element) {
+          ;(marker.element as HTMLElement).style.transform = 'scale(1)'
+        }
+      }
+    })
+  }, [activeMarkerIds, hoveredActivity])
 
   // 目的地间转场虚线（悉尼→大洋路→墨尔本）
   const transitPolylines = useMemo(() => {
@@ -158,8 +192,12 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
       const destB = itinerary.destinations[i + 1]
       const allActA = destA.days.flatMap(d => d.activities)
       const allActB = destB.days.flatMap(d => d.activities)
-      const lastA = [...allActA].reverse().find(a => isActivityActive(a.id) && a.lat && a.lng)
-      const firstB = allActB.find(a => isActivityActive(a.id) && a.lat && a.lng)
+      const lastA = [...allActA].reverse().find(a =>
+        isActivityActive(a.id) && a.lat != null && a.lng != null
+      )
+      const firstB = allActB.find(a =>
+        isActivityActive(a.id) && a.lat != null && a.lng != null
+      )
       if (lastA && firstB) {
         lines.push({
           id: `${destA.id}-to-${destB.id}`,
@@ -169,6 +207,8 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
     }
     return lines
   }, [isActivityActive])
+
+  const visibleTransitPolylines = activeDayId ? [] : transitPolylines
 
   const handleMapLoad = (map: google.maps.Map) => {
     mapRef.current = map
@@ -187,13 +227,14 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
       Number(b.isActiveDay) - Number(a.isActiveDay)
     )
 
-    sorted.forEach(({ activity, color, isActiveDay }) => {
-      if (!activity.lat || !activity.lng) return
+    sorted.forEach(({ activity, color, isActiveDay, sequence }) => {
+      if (activity.lat == null || activity.lng == null) return
 
       const content = createMarkerElement(
         color,
         activity.mapLabel ?? activity.title,
-        isActiveDay
+        isActiveDay,
+        sequence
       )
 
       const marker = new google.maps.marker.AdvancedMarkerElement({
@@ -201,7 +242,7 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
         position: { lat: activity.lat, lng: activity.lng },
         title: activity.mapLabel ?? activity.title,
         content,
-        zIndex: isActiveDay ? 10 : 1,
+        zIndex: isActiveDay ? 20 : 1,
       })
 
       marker.addListener('click', () => {
@@ -300,24 +341,41 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
             ],
       }}
     >
-      {/* 目的地内路线（实线，按目的地颜色） */}
-      {polylines.map(line =>
-        line.path.length >= 2 ? (
+      {/* 当前天路线（带方向箭头）；未选择日期时显示全部天路线 */}
+      {visibleRoutes.map(line => {
+        const isPrimary = !activeDayId || line.isActiveDay
+
+        return line.path.length >= 2 ? (
           <Polyline
             key={line.id}
             path={line.path}
             options={{
               strokeColor: line.color,
-              strokeOpacity: 0.75,
-              strokeWeight: 3,
+              strokeOpacity: isPrimary ? 0.92 : 0.18,
+              strokeWeight: isPrimary ? 5 : 2,
               geodesic: true,
+              zIndex: isPrimary ? 10 : 1,
+              icons: [
+                {
+                  icon: {
+                    path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                    strokeColor: line.color,
+                    strokeOpacity: isPrimary ? 0.95 : 0.28,
+                    fillColor: line.color,
+                    fillOpacity: isPrimary ? 0.95 : 0.28,
+                    scale: isPrimary ? 3 : 2,
+                  },
+                  offset: '28px',
+                  repeat: isPrimary ? '72px' : '120px',
+                },
+              ],
             }}
           />
         ) : null
-      )}
+      })}
 
       {/* 目的地间转场路线（灰色虚线：悉尼→大洋路→墨尔本） */}
-      {transitPolylines.map(line => (
+      {visibleTransitPolylines.map(line => (
         <Polyline
           key={line.id}
           path={line.path}
@@ -336,6 +394,17 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
                 },
                 offset: '0',
                 repeat: '12px',
+              },
+              {
+                icon: {
+                  path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                  strokeOpacity: 0.55,
+                  strokeColor: '#CBD5E1',
+                  fillOpacity: 0.55,
+                  fillColor: '#CBD5E1',
+                  scale: 2.4,
+                },
+                offset: '50%',
               },
             ],
           }}
