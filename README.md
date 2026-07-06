@@ -20,6 +20,7 @@
 
 - Node.js ≥ 18
 - Google Maps API Key
+- Google Maps Map ID（地点标记依赖 Advanced Markers，必须配置；本地测试可临时使用 `DEMO_MAP_ID`）
 
 ### 快速开始
 
@@ -29,7 +30,7 @@ npm install
 
 # 配置环境变量
 cp .env.example .env.local
-# 编辑 .env.local，填入你的 Google Maps API Key
+# 编辑 .env.local，填入你的 Google Maps API Key 和 Map ID
 
 # 启动开发服务器
 npm run dev
@@ -42,14 +43,15 @@ npm run dev
 2. 创建项目或选择现有项目
 3. 启用 **Maps JavaScript API**
 4. 创建 API Key（建议限制域名）
-5. 可选：在 Map Styles 创建深色主题样式，获取 Map ID
+5. 在 **Map Management** 创建 JavaScript 类型 Map ID（地点标记必需）
+6. 可选：在 Map Styles 创建深色主题样式，并关联到该 Map ID
 
 ### 环境变量
 
 ```bash
 # .env.local（不提交 Git）
 VITE_GOOGLE_MAPS_KEY=your_api_key_here
-VITE_GOOGLE_MAPS_MAP_ID=your_map_style_id_here   # 可选，深色地图主题
+VITE_GOOGLE_MAPS_MAP_ID=your_map_id_here   # 本地测试可临时使用 DEMO_MAP_ID
 ```
 
 ---
@@ -64,7 +66,7 @@ VITE_GOOGLE_MAPS_MAP_ID=your_map_style_id_here   # 可选，深色地图主题
 
 3. **配置环境变量**（Vercel Dashboard → Settings → Environment Variables）
    - `VITE_GOOGLE_MAPS_KEY`
-   - `VITE_GOOGLE_MAPS_MAP_ID`（可选）
+   - `VITE_GOOGLE_MAPS_MAP_ID`
 
 4. 点击 **Deploy**，每次 `git push` 自动重新部署
 

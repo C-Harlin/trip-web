@@ -7,7 +7,8 @@ import { useMapSync } from '../hooks/useMapSync'
 const MAP_CONTAINER_STYLE = { width: '100%', height: '100%' }
 const DEFAULT_CENTER = { lat: -37.0, lng: 145.5 }
 const DEFAULT_ZOOM = 6
-const LIBRARIES: ('marker' | 'places')[] = []
+const LIBRARIES: ('marker' | 'places')[] = ['marker']
+const MAP_ID_PLACEHOLDERS = new Set(['your_map_style_id_here', 'your_map_id_here'])
 
 interface Props {
   isActivityActive: (id: string) => boolean
@@ -76,7 +77,8 @@ function createMarkerElement(color: string, label: string, isActiveDay: boolean)
 
 export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredActivity }: Props) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ''
-  const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? ''
+  const rawMapId = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? '').trim()
+  const mapId = MAP_ID_PLACEHOLDERS.has(rawMapId) ? '' : rawMapId
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
@@ -213,6 +215,8 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
 
   // Re-render markers when markers list or activeDayId changes
   useEffect(() => {
+    const markerStore = markersRef.current
+
     if (mapRef.current && isLoaded) {
       // Check if AdvancedMarkerElement is available (requires mapId)
       if (typeof google !== 'undefined' && google.maps.marker?.AdvancedMarkerElement) {
@@ -221,7 +225,7 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
     }
     // Cleanup on unmount
     return () => {
-      markersRef.current.forEach(m => { m.map = null })
+      markerStore.forEach(m => { m.map = null })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markers, isLoaded, activeDayId])
@@ -233,6 +237,18 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
         <div className="text-center">
           <div className="font-medium mb-1">Google Maps 未配置</div>
           <div className="text-xs opacity-70">请在 .env.local 中设置 VITE_GOOGLE_MAPS_KEY</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!mapId) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-card text-muted text-sm gap-4">
+        <div className="text-4xl">🗺️</div>
+        <div className="text-center">
+          <div className="font-medium mb-1">Google Maps Map ID 未配置</div>
+          <div className="text-xs opacity-70">地点标记需要在 .env.local 中设置 VITE_GOOGLE_MAPS_MAP_ID</div>
         </div>
       </div>
     )
