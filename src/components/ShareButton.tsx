@@ -28,7 +28,7 @@ export function ShareButton({ skipped }: Props) {
   return (
     <button
       onClick={handleShare}
-      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-sm font-medium transition-all cursor-pointer"
+      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card/90 hover:bg-card border border-[#D6E4EA] text-sm font-medium text-slate-700 shadow-sm transition-all cursor-pointer"
     >
       {copied ? (
         <>

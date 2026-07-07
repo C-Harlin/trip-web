@@ -1,9 +1,10 @@
 import type { Itinerary } from '../types/itinerary'
+import { TRIP_YEAR } from './tripConfig'
 
 export const itinerary: Itinerary = {
   title: '澳洲行程',
   subtitle: '悉尼 · 大洋路 · 墨尔本',
-  dateRange: '2025年 9/25 – 10/6',
+  dateRange: `${TRIP_YEAR}年 9/25 – 10/6`,
   destinations: [
     {
       id: 'sydney',
@@ -11,6 +12,9 @@ export const itinerary: Itinerary = {
       nameEn: 'Sydney',
       color: '#3B82F6',
       coverDescription: '澳洲最大城市，海港大桥与歌剧院的故乡。行程大本营，停留 5 天。',
+      photoUrl: '/images/sydney-opera-house.jpg',
+      photoAlt: '悉尼歌剧院与海港景色',
+      photoCredit: 'Wikimedia Commons',
       days: [
         {
           id: 'syd-d1',
@@ -344,6 +348,9 @@ export const itinerary: Itinerary = {
       nameEn: 'Great Ocean Road',
       color: '#10B981',
       coverDescription: '世界最美海岸公路，十二门徒岩日出是此行高光时刻。自驾/包车 3 天。',
+      photoUrl: '/images/great-ocean-road.jpg',
+      photoAlt: '大洋路十二门徒岩与海岸线',
+      photoCredit: 'Wikimedia Commons',
       days: [
         {
           id: 'gor-d1',
@@ -575,6 +582,9 @@ export const itinerary: Itinerary = {
       nameEn: 'Melbourne',
       color: '#8B5CF6',
       coverDescription: '文艺之都，市场、咖啡、街头艺术与企鹅归巢的完美收尾。停留 4 天。',
+      photoUrl: '/images/melbourne-skyline.jpg',
+      photoAlt: '墨尔本天际线与 Princes Bridge',
+      photoCredit: 'Wikimedia Commons',
       days: [
         {
           id: 'mel-d1',

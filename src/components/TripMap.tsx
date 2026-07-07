@@ -77,8 +77,8 @@ function createMarkerElement(
   const lbl = document.createElement('div')
   lbl.style.cssText = `
     display: ${isActiveDay ? 'block' : 'none'};
-    background: rgba(13,17,23,0.92);
-    color: #fff;
+    background: rgba(255,255,255,0.94);
+    color: #172033;
     font-size: 12px;
     font-weight: 600;
     font-family: system-ui, -apple-system, sans-serif;

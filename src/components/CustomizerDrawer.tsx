@@ -32,23 +32,23 @@ export function CustomizerDrawer({ isOpen, onClose, state }: Props) {
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          className="fixed inset-0 bg-slate-900/35 z-40 backdrop-blur-sm"
           onClick={onClose}
         />
       )}
 
       {/* Drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-[#161B22] border-l border-white/10 z-50 flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 h-full w-80 bg-card border-l border-[#D6E4EA] z-50 flex flex-col text-slate-900 shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#D6E4EA]">
           <h2 className="font-semibold text-base">定制行程</h2>
           <button
             onClick={onClose}
-            className="text-muted hover:text-white p-1 rounded-lg hover:bg-white/10 transition-all"
+            className="text-muted hover:text-slate-900 p-1 rounded-lg hover:bg-slate-100 transition-all"
           >
             ✕
           </button>
@@ -61,7 +61,7 @@ export function CustomizerDrawer({ isOpen, onClose, state }: Props) {
             return (
               <div
                 key={dest.id}
-                className="rounded-xl border border-white/10 overflow-hidden"
+                className="rounded-lg border border-[#D6E4EA] overflow-hidden"
               >
                 {/* Destination header */}
                 <label
@@ -89,9 +89,9 @@ export function CustomizerDrawer({ isOpen, onClose, state }: Props) {
                 {dest.days.map(day => {
                   const dayActive = isDayActive(day.id)
                   return (
-                    <div key={day.id} className="border-t border-white/5">
+                    <div key={day.id} className="border-t border-slate-100">
                       {/* Day row */}
-                      <label className="flex items-center gap-3 px-4 py-2 cursor-pointer select-none bg-white/3 hover:bg-white/5 transition-colors">
+                      <label className="flex items-center gap-3 px-4 py-2 cursor-pointer select-none bg-[#EEF5F8] hover:bg-[#E7F0F4] transition-colors">
                         <input
                           type="checkbox"
                           checked={dayActive}
@@ -110,7 +110,7 @@ export function CustomizerDrawer({ isOpen, onClose, state }: Props) {
                         return (
                           <label
                             key={activity.id}
-                            className="flex items-start gap-3 px-4 py-1.5 cursor-pointer select-none hover:bg-white/3 transition-colors"
+                            className="flex items-start gap-3 px-4 py-1.5 cursor-pointer select-none hover:bg-[#EEF5F8] transition-colors"
                           >
                             <input
                               type="checkbox"
@@ -123,7 +123,7 @@ export function CustomizerDrawer({ isOpen, onClose, state }: Props) {
                               <div className="text-muted text-xs">{activity.time}</div>
                               <div
                                 className={`text-xs leading-tight ${
-                                  actActive ? 'text-white' : 'text-muted line-through'
+                                  actActive ? 'text-slate-800' : 'text-muted line-through'
                                 }`}
                               >
                                 {activity.title}
@@ -141,7 +141,7 @@ export function CustomizerDrawer({ isOpen, onClose, state }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-white/10 space-y-2">
+        <div className="px-4 py-4 border-t border-[#D6E4EA] space-y-2">
           <button
             onClick={onClose}
             className="w-full py-3 rounded-xl font-medium text-sm transition-all hover:opacity-90"
@@ -153,7 +153,7 @@ export function CustomizerDrawer({ isOpen, onClose, state }: Props) {
             onClick={() => {
               resetAll()
             }}
-            className="w-full py-2 text-muted text-xs hover:text-white transition-colors"
+            className="w-full py-2 text-muted text-xs hover:text-slate-900 transition-colors"
           >
             恢复全部默认
           </button>

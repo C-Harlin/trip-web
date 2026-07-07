@@ -30,6 +30,9 @@ export interface Destination {
   nameEn: string       // "Sydney"
   color: string        // "#3B82F6"
   coverDescription: string
+  photoUrl: string
+  photoAlt: string
+  photoCredit: string
   days: Day[]
 }
 

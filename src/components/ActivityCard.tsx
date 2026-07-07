@@ -20,7 +20,7 @@ export function ActivityCard({ activity, isActive, destColor, onHover }: Props) 
     <div
       className={`flex gap-3 py-2 px-3 rounded-xl transition-all ${
         isActive ? 'opacity-100' : 'opacity-25'
-      } ${activity.lat ? 'cursor-pointer hover:bg-white/5' : ''}`}
+      } ${activity.lat ? 'cursor-pointer hover:bg-[#E7F0F4]' : ''}`}
       onMouseEnter={() => onHover?.(activity)}
       onMouseLeave={() => onHover?.(null)}
     >
@@ -39,7 +39,7 @@ export function ActivityCard({ activity, isActive, destColor, onHover }: Props) 
           <span className="text-sm flex-shrink-0">{TYPE_ICONS[activity.type]}</span>
           <span
             className={`text-sm font-medium leading-tight ${
-              isActive ? 'text-white' : 'text-muted line-through'
+              isActive ? 'text-slate-900' : 'text-muted line-through'
             }`}
           >
             {activity.title}

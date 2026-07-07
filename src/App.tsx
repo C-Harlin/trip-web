@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { HeroSection } from './components/HeroSection'
 import { DestinationCards } from './components/DestinationCards'
+import { TripHighlights } from './components/TripHighlights'
 import { ItineraryLayout } from './components/ItineraryLayout'
 import { DayList } from './components/DayList'
 import { TripMap } from './components/TripMap'
@@ -52,13 +53,15 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-bg text-white">
+    <div className="min-h-screen bg-[#EEF5F8] text-slate-900">
       <HeroSection skipped={skipped} />
 
       <DestinationCards
         isDestinationActive={isDestinationActive}
         onDestinationClick={handleDestinationClick}
       />
+
+      <TripHighlights />
 
       <ItineraryLayout
         left={
