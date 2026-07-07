@@ -2,16 +2,20 @@ import { useState, useCallback } from 'react'
 import { HeroSection } from './components/HeroSection'
 import { DestinationCards } from './components/DestinationCards'
 import { TripHighlights } from './components/TripHighlights'
+import { TravelPrepPanel } from './components/TravelPrepPanel'
+import { DestinationChapterCovers } from './components/DestinationChapterCovers'
 import { ItineraryLayout } from './components/ItineraryLayout'
 import { DayList } from './components/DayList'
 import { TripMap } from './components/TripMap'
 import { CustomizerDrawer } from './components/CustomizerDrawer'
 import { useItineraryState } from './hooks/useItineraryState'
+import { useBookingState } from './hooks/useBookingState'
 import { itinerary } from './data/itinerary'
 import type { Activity } from './types/itinerary'
 
 export default function App() {
   const itineraryState = useItineraryState()
+  const bookingState = useBookingState()
   const {
     skipped,
     isActivityActive,
@@ -63,6 +67,13 @@ export default function App() {
 
       <TripHighlights />
 
+      <TravelPrepPanel
+        isActivityActive={isActivityActive}
+        bookingState={bookingState}
+      />
+
+      <DestinationChapterCovers />
+
       <ItineraryLayout
         left={
           <DayList
@@ -70,6 +81,7 @@ export default function App() {
             activeDayId={activeDayId}
             onDayClick={setActiveDayId}
             onOpenCustomizer={() => setCustomizerOpen(true)}
+            getBookingStatus={bookingState.getStatus}
             onActivityHover={setHoveredActivity}
           />
         }

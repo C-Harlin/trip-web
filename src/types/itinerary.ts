@@ -5,6 +5,22 @@ export type ActivityType =
   | 'accommodation'
   | 'nature'
 
+export type BookingStatus =
+  | 'todo'
+  | 'booked'
+  | 'optional'
+  | 'not_needed'
+
+export interface BookingRequirement {
+  activityId: string
+  status: BookingStatus
+  label: string
+  bookingUrl?: string
+  sourceName?: string
+  deadline?: string
+  note: string
+}
+
 export interface Activity {
   id: string           // 格式: {dest}-d{n}-a{n}，如 "syd-d1-a1"
   time: string         // "19:00" 或 "上午" 等

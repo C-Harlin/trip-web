@@ -44,7 +44,7 @@ export function WeatherPanel({ day, destination, activities }: Props) {
 
   if (loading || !weather || !advice) {
     return (
-      <div className="mx-3 mb-2 border-y border-[#D6E4EA] py-3 text-xs text-muted">
+      <div className="mx-3 mb-3 rounded-lg border border-[#D6E4EA] bg-card/80 p-3 text-xs text-muted">
         天气与穿搭加载中...
       </div>
     )
@@ -53,10 +53,17 @@ export function WeatherPanel({ day, destination, activities }: Props) {
   const sourceLabel = weather.source === 'forecast' ? '实时预报' : '季节参考'
 
   return (
-    <div className="mx-3 mb-2 border-y border-[#D6E4EA] py-3">
-      <div className="flex items-start gap-3">
+    <div
+      className="mx-3 mb-3 overflow-hidden rounded-lg border border-[#D6E4EA] bg-gradient-to-br from-card via-[#F7FBFC] to-[#EAF4F7] shadow-sm"
+      style={{ boxShadow: `0 12px 32px ${destination.color}12` }}
+    >
+      <div
+        className="h-1 w-full"
+        style={{ background: destination.color }}
+      />
+      <div className="flex items-start gap-3 p-3">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+          className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-xl shadow-sm"
           style={{ background: destination.color + '22', color: destination.color }}
           aria-hidden="true"
         >
@@ -65,7 +72,7 @@ export function WeatherPanel({ day, destination, activities }: Props) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm font-semibold text-slate-900">天气与穿搭</span>
+            <span className="text-sm font-semibold text-slate-900">今日旅行提示</span>
             <span
               className="text-[10px] px-1.5 py-0.5 rounded-full border"
               style={{ borderColor: destination.color + '55', color: destination.color }}
@@ -84,7 +91,7 @@ export function WeatherPanel({ day, destination, activities }: Props) {
             </span>
           </div>
 
-          <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-muted">
+          <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-muted">
             <Metric label="降雨" value={`${weather.precipitationProbability}%`} />
             <Metric label="风速" value={`${weather.windSpeedMax}km/h`} />
             <Metric label="UV" value={String(weather.uvIndexMax)} />
@@ -121,7 +128,7 @@ export function WeatherPanel({ day, destination, activities }: Props) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 rounded-lg bg-white/55 px-2 py-1.5">
       <div className="text-slate-400">{label}</div>
       <div className="text-slate-700 font-medium truncate">{value}</div>
     </div>

@@ -18,8 +18,8 @@ function DestinationCard({
   return (
     <button
       onClick={onClick}
-      className={`group flex-1 min-w-[220px] overflow-hidden text-left rounded-lg border transition-all cursor-pointer ${
-        isActive ? 'shadow-[0_18px_45px_rgba(42,68,82,0.13)]' : 'opacity-70'
+      className={`group flex-1 min-w-[220px] overflow-hidden text-left rounded-lg border transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(42,68,82,0.13)] ${
+        isActive ? 'shadow-[0_18px_45px_rgba(42,68,82,0.13)]' : 'opacity-[0.76]'
       }`}
       style={{
         borderColor: isActive ? dest.color + '45' : '#D6E4EA',

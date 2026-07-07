@@ -3,12 +3,14 @@ import { itinerary } from '../data/itinerary'
 import { ActivityCard } from './ActivityCard'
 import { WeatherPanel } from './WeatherPanel'
 import type { Activity } from '../types/itinerary'
+import type { BookingStatus } from '../types/itinerary'
 
 interface Props {
   isActivityActive: (id: string) => boolean
   activeDayId: string | null
   onDayClick: (dayId: string) => void
   onOpenCustomizer: () => void
+  getBookingStatus?: (activityId: string) => BookingStatus | undefined
   onActivityHover?: (activity: Activity | null) => void
 }
 
@@ -17,6 +19,7 @@ export function DayList({
   activeDayId,
   onDayClick,
   onOpenCustomizer,
+  getBookingStatus,
   onActivityHover,
 }: Props) {
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -68,10 +71,10 @@ export function DayList({
                 key={day.id}
                 ref={el => { dayRefs.current[day.id] = el }}
                 data-day-id={day.id}
-              className={`mx-2 mb-1 rounded-lg border transition-all cursor-pointer ${
+                className={`mx-2 mb-1 rounded-lg border transition-all duration-200 cursor-pointer ${
                   isActive
                     ? 'border-[#D6E4EA] bg-[#EEF5F8] shadow-sm'
-                    : 'border-transparent hover:border-[#D6E4EA] hover:bg-[#F2F7F9]'
+                    : 'border-transparent hover:-translate-y-0.5 hover:border-[#D6E4EA] hover:bg-[#F2F7F9] hover:shadow-sm'
                 }`}
                 onClick={() => onDayClick(day.id)}
               >
@@ -98,12 +101,16 @@ export function DayList({
                       destination={dest}
                       activities={weatherActivities}
                     />
-                    {day.activities.map(activity => (
+                    {day.activities.map((activity, index) => (
                       <ActivityCard
                         key={activity.id}
                         activity={activity}
                         isActive={isActivityActive(activity.id)}
                         destColor={dest.color}
+                        bookingStatus={getBookingStatus?.(activity.id)}
+                        sequence={index + 1}
+                        isFirst={index === 0}
+                        isLast={index === day.activities.length - 1}
                         onHover={onActivityHover}
                       />
                     ))}

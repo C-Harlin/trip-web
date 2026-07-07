@@ -1,4 +1,10 @@
 import type { Activity } from '../types/itinerary'
+import {
+  BOOKING_STATUS_COLORS,
+  BOOKING_STATUS_LABELS,
+  getBookingRequirement,
+} from '../data/booking'
+import type { BookingStatus } from '../types/itinerary'
 
 const TYPE_ICONS: Record<string, string> = {
   transport: '🚗',
@@ -12,28 +18,56 @@ interface Props {
   activity: Activity
   isActive: boolean
   destColor: string
+  bookingStatus?: BookingStatus
+  sequence?: number
+  isFirst?: boolean
+  isLast?: boolean
   onHover?: (activity: Activity | null) => void
 }
 
-export function ActivityCard({ activity, isActive, destColor, onHover }: Props) {
+export function ActivityCard({
+  activity,
+  isActive,
+  destColor,
+  bookingStatus,
+  sequence,
+  isFirst = false,
+  isLast = false,
+  onHover,
+}: Props) {
+  const booking = getBookingRequirement(activity.id)
+  const status = bookingStatus ?? booking?.status
+
   return (
     <div
-      className={`flex gap-3 py-2 px-3 rounded-xl transition-all ${
+      className={`group flex gap-3 rounded-xl px-3 py-2 transition-all duration-200 ${
         isActive ? 'opacity-100' : 'opacity-25'
-      } ${activity.lat ? 'cursor-pointer hover:bg-[#E7F0F4]' : ''}`}
+      } ${activity.lat ? 'cursor-pointer hover:-translate-y-0.5 hover:bg-[#E7F0F4] hover:shadow-sm' : ''}`}
       onMouseEnter={() => onHover?.(activity)}
       onMouseLeave={() => onHover?.(null)}
     >
-      {/* Left: color dot + time */}
-      <div className="flex flex-col items-center gap-1 min-w-[52px] flex-shrink-0">
+      <div className="relative flex min-w-[58px] flex-shrink-0 flex-col items-center gap-1">
+        {!isFirst && (
+          <div
+            className="absolute top-0 h-3 w-px opacity-35"
+            style={{ background: destColor }}
+          />
+        )}
+        {!isLast && (
+          <div
+            className="absolute bottom-0 top-7 w-px opacity-35"
+            style={{ background: destColor }}
+          />
+        )}
         <div
-          className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-          style={{ background: destColor }}
-        />
+          className="z-10 mt-0.5 grid h-6 w-6 flex-shrink-0 place-items-center rounded-full border-2 bg-card text-[10px] font-bold shadow-sm transition-transform group-hover:scale-110"
+          style={{ borderColor: destColor, color: destColor }}
+        >
+          {sequence ?? ''}
+        </div>
         <span className="text-muted text-xs text-center leading-tight">{activity.time}</span>
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-1">
           <span className="text-sm flex-shrink-0">{TYPE_ICONS[activity.type]}</span>
@@ -44,6 +78,17 @@ export function ActivityCard({ activity, isActive, destColor, onHover }: Props) 
           >
             {activity.title}
           </span>
+          {booking && status && (
+            <span
+              className="ml-1 flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{
+                background: BOOKING_STATUS_COLORS[status] + '18',
+                color: BOOKING_STATUS_COLORS[status],
+              }}
+            >
+              {BOOKING_STATUS_LABELS[status]}
+            </span>
+          )}
         </div>
         {activity.description && (
           <p className="text-muted text-xs mt-0.5 leading-relaxed">{activity.description}</p>
