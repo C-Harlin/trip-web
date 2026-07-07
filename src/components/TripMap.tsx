@@ -16,6 +16,7 @@ interface Props {
   onMarkerClick: (activity: Activity) => void
   hoveredActivity?: Activity | null
   focusedActivity?: Activity | null
+  focusSignal?: number
 }
 
 interface MarkerData {
@@ -114,6 +115,7 @@ export function TripMap({
   onMarkerClick,
   hoveredActivity,
   focusedActivity,
+  focusSignal = 0,
 }: Props) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ''
   const rawMapId = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? '').trim()
@@ -130,10 +132,13 @@ export function TripMap({
   const mapRef = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<Map<string, google.maps.marker.AdvancedMarkerElement>>(new Map())
   const prevDayId = useRef<string | null>(null)
-  const prevActivityId = useRef<string | null>(null)
 
   // Pan to day when activeDayId changes
   useEffect(() => {
+    if (!activeDayId) {
+      prevDayId.current = null
+      return
+    }
     if (activeDayId && activeDayId !== prevDayId.current && isLoaded) {
       prevDayId.current = activeDayId
       panToDay(activeDayId)
@@ -144,16 +149,14 @@ export function TripMap({
   useEffect(() => {
     if (
       focusedActivity &&
-      focusedActivity.id !== prevActivityId.current &&
       focusedActivity.lat != null &&
       focusedActivity.lng != null &&
       isLoaded
     ) {
-      prevActivityId.current = focusedActivity.id
       setSelectedActivity(focusedActivity)
       panToActivity(focusedActivity)
     }
-  }, [focusedActivity, isLoaded, panToActivity])
+  }, [focusedActivity, focusSignal, isLoaded, panToActivity])
 
   // Build one route per day so the map can focus on the active day's sequence.
   const dayRoutes = useMemo<RouteLine[]>(

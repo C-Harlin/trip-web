@@ -37,16 +37,26 @@ export default function App() {
     resetAll,
   } = itineraryState
 
-  const [activeDayId, setActiveDayId] = useState<string | null>('syd-d1')
+  const [activeDayId, setActiveDayId] = useState<string | null>(null)
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const [hoveredActivity, setHoveredActivity] = useState<Activity | null>(null)
   const [focusedActivity, setFocusedActivity] = useState<Activity | null>(null)
+  const [focusSignal, setFocusSignal] = useState(0)
   const [view, setView] = useState<AppView>(readViewFromHash)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     const handleHashChange = () => setView(readViewFromHash())
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)')
+    const update = () => setIsMobile(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
   }, [])
 
   const navigate = useCallback((nextView: AppView) => {
@@ -68,15 +78,29 @@ export default function App() {
     }, 50)
   }, [])
 
+  const scrollToMap = useCallback((dayId?: string) => {
+    setTimeout(() => {
+      const scoped = dayId
+        ? document.querySelector(`[data-day-id="${dayId}"] [data-trip-map-panel="true"]`)
+        : null
+      const el = scoped ?? Array.from(document.querySelectorAll('[data-trip-map-panel="true"]')).find(panel => {
+        const rect = panel.getBoundingClientRect()
+        const style = window.getComputedStyle(panel)
+        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden'
+      })
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 90)
+  }, [])
+
   // When a destination card is clicked, scroll to its first day
   const handleDestinationClick = useCallback((destId: string) => {
     const dest = itinerary.destinations.find(d => d.id === destId)
     const firstDay = dest?.days[0]?.id ?? null
     if (firstDay) {
       setActiveDayId(firstDay)
-      scrollToDay(firstDay)
+      scrollToMap(firstDay)
     }
-  }, [scrollToDay])
+  }, [scrollToMap])
 
   // When a map marker is clicked, highlight its day and scroll left panel
   const handleMarkerClick = useCallback((activity: Activity) => {
@@ -84,6 +108,7 @@ export default function App() {
     const dayId = activity.id.replace(/-a\d+$/, '')
     setActiveDayId(dayId)
     setFocusedActivity(activity)
+    setFocusSignal(signal => signal + 1)
     scrollToDay(dayId)
   }, [scrollToDay])
 
@@ -92,15 +117,35 @@ export default function App() {
     scrollToDay(dayId)
   }, [scrollToDay])
 
+  const handleDayClick = useCallback((dayId: string) => {
+    setActiveDayId(current => current === dayId ? null : dayId)
+  }, [])
+
   const handleActivityFocus = useCallback((activity: Activity) => {
     const dayId = activity.id.replace(/-a\d+$/, '')
     setActiveDayId(dayId)
     setFocusedActivity(activity)
+    setFocusSignal(signal => signal + 1)
     if (view !== 'home') {
       navigate('home')
     }
-    scrollToDay(dayId)
-  }, [navigate, scrollToDay, view])
+    if (isMobile) {
+      scrollToMap(dayId)
+    } else {
+      scrollToDay(dayId)
+    }
+  }, [isMobile, navigate, scrollToDay, scrollToMap, view])
+
+  const renderTripMap = () => (
+    <TripMap
+      isActivityActive={isActivityActive}
+      activeDayId={activeDayId}
+      onMarkerClick={handleMarkerClick}
+      hoveredActivity={hoveredActivity}
+      focusedActivity={focusedActivity}
+      focusSignal={focusSignal}
+    />
+  )
 
   if (view !== 'home') {
     return (
@@ -166,26 +211,22 @@ export default function App() {
       <DestinationChapterCovers />
 
       <ItineraryLayout
+        isMobile={isMobile}
         left={
           <DayList
             isActivityActive={isActivityActive}
             activeDayId={activeDayId}
-            onDayClick={setActiveDayId}
+            onDayClick={handleDayClick}
             onOpenCustomizer={() => setCustomizerOpen(true)}
             getBookingStatus={bookingState.getStatus}
             onActivityHover={setHoveredActivity}
             onActivityClick={handleActivityFocus}
             focusedActivityId={focusedActivity?.id ?? null}
+            mobileMap={isMobile ? renderTripMap() : undefined}
           />
         }
         right={
-          <TripMap
-            isActivityActive={isActivityActive}
-            activeDayId={activeDayId}
-            onMarkerClick={handleMarkerClick}
-            hoveredActivity={hoveredActivity}
-            focusedActivity={focusedActivity}
-          />
+          isMobile ? null : renderTripMap()
         }
       />
 

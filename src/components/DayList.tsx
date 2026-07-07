@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { itinerary } from '../data/itinerary'
 import { ActivityCard } from './ActivityCard'
 import { WeatherPanel } from './WeatherPanel'
@@ -14,6 +14,7 @@ interface Props {
   onActivityHover?: (activity: Activity | null) => void
   onActivityClick?: (activity: Activity) => void
   focusedActivityId?: string | null
+  mobileMap?: ReactNode
 }
 
 export function DayList({
@@ -25,6 +26,7 @@ export function DayList({
   onActivityHover,
   onActivityClick,
   focusedActivityId,
+  mobileMap,
 }: Props) {
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -100,6 +102,14 @@ export function DayList({
                 {/* Activities (shown when this day is selected) */}
                 {isActive && (
                   <div className="pb-2">
+                    {mobileMap && (
+                      <div
+                        className="mx-2 mb-2 h-[260px] overflow-hidden rounded-xl border border-[#D6E4EA] bg-card shadow-sm md:hidden"
+                        data-trip-map-panel="true"
+                      >
+                        {mobileMap}
+                      </div>
+                    )}
                     <WeatherPanel
                       day={day}
                       destination={dest}
