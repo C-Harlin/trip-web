@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { HeroSection } from './components/HeroSection'
 import { DestinationCards } from './components/DestinationCards'
 import { TripHighlights } from './components/TripHighlights'
@@ -13,6 +13,15 @@ import { useItineraryState } from './hooks/useItineraryState'
 import { useBookingState } from './hooks/useBookingState'
 import { itinerary } from './data/itinerary'
 import type { Activity } from './types/itinerary'
+
+type AppView = 'home' | 'booking' | 'packing'
+
+function readViewFromHash(): AppView {
+  if (typeof window === 'undefined') return 'home'
+  if (window.location.hash === '#booking') return 'booking'
+  if (window.location.hash === '#packing') return 'packing'
+  return 'home'
+}
 
 export default function App() {
   const itineraryState = useItineraryState()
@@ -32,6 +41,25 @@ export default function App() {
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const [hoveredActivity, setHoveredActivity] = useState<Activity | null>(null)
   const [focusedActivity, setFocusedActivity] = useState<Activity | null>(null)
+  const [view, setView] = useState<AppView>(readViewFromHash)
+
+  useEffect(() => {
+    const handleHashChange = () => setView(readViewFromHash())
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  const navigate = useCallback((nextView: AppView) => {
+    const nextHash = nextView === 'home' ? '' : `#${nextView}`
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash
+    } else {
+      setView(nextView)
+    }
+    if (nextView === 'home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [])
 
   const scrollToDay = useCallback((dayId: string) => {
     setTimeout(() => {
@@ -68,8 +96,45 @@ export default function App() {
     const dayId = activity.id.replace(/-a\d+$/, '')
     setActiveDayId(dayId)
     setFocusedActivity(activity)
+    if (view !== 'home') {
+      navigate('home')
+    }
     scrollToDay(dayId)
-  }, [scrollToDay])
+  }, [navigate, scrollToDay, view])
+
+  if (view !== 'home') {
+    return (
+      <div className="min-h-screen bg-[#EEF5F8] text-slate-900">
+        <div className="border-b border-[#D6E4EA] bg-card/90">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                Trip Prep
+              </div>
+              <h1 className="text-xl font-bold text-slate-900">
+                {view === 'booking' ? '预订状态追踪' : 'Packing List'}
+              </h1>
+            </div>
+            <button
+              onClick={() => navigate('home')}
+              className="rounded-lg border border-[#D6E4EA] bg-[#EEF5F8] px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-card"
+            >
+              返回总览
+            </button>
+          </div>
+        </div>
+
+        <TravelPrepPanel
+          mode={view}
+          isActivityActive={isActivityActive}
+          bookingState={bookingState}
+          onJumpToDay={handleDayJump}
+          onFocusActivity={handleActivityFocus}
+          onNavigate={navigate}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#EEF5F8] text-slate-900">
@@ -90,10 +155,12 @@ export default function App() {
       />
 
       <TravelPrepPanel
+        mode="summary"
         isActivityActive={isActivityActive}
         bookingState={bookingState}
         onJumpToDay={handleDayJump}
         onFocusActivity={handleActivityFocus}
+        onNavigate={navigate}
       />
 
       <DestinationChapterCovers />
