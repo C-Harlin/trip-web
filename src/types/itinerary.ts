@@ -21,6 +21,12 @@ export interface BookingRequirement {
   note: string
 }
 
+export interface BookingDetail {
+  reference?: string
+  note?: string
+  updatedAt?: string
+}
+
 export interface Activity {
   id: string           // 格式: {dest}-d{n}-a{n}，如 "syd-d1-a1"
   time: string         // "19:00" 或 "上午" 等

@@ -23,6 +23,8 @@ interface Props {
   isFirst?: boolean
   isLast?: boolean
   onHover?: (activity: Activity | null) => void
+  onClick?: (activity: Activity) => void
+  isFocused?: boolean
 }
 
 export function ActivityCard({
@@ -34,6 +36,8 @@ export function ActivityCard({
   isFirst = false,
   isLast = false,
   onHover,
+  onClick,
+  isFocused = false,
 }: Props) {
   const booking = getBookingRequirement(activity.id)
   const status = bookingStatus ?? booking?.status
@@ -42,9 +46,17 @@ export function ActivityCard({
     <div
       className={`group flex gap-3 rounded-xl px-3 py-2 transition-all duration-200 ${
         isActive ? 'opacity-100' : 'opacity-25'
+      } ${
+        isFocused
+          ? 'bg-card shadow-[0_0_0_2px_rgba(59,130,246,0.18),0_10px_24px_rgba(42,68,82,0.10)]'
+          : ''
       } ${activity.lat ? 'cursor-pointer hover:-translate-y-0.5 hover:bg-[#E7F0F4] hover:shadow-sm' : ''}`}
       onMouseEnter={() => onHover?.(activity)}
       onMouseLeave={() => onHover?.(null)}
+      onClick={event => {
+        event.stopPropagation()
+        onClick?.(activity)
+      }}
     >
       <div className="relative flex min-w-[58px] flex-shrink-0 flex-col items-center gap-1">
         {!isFirst && (

@@ -6,17 +6,28 @@ import {
 } from '../data/booking'
 import { itinerary } from '../data/itinerary'
 import { generatePackingList } from '../utils/packingList'
-import type { Activity, BookingRequirement, BookingStatus, Day, Destination } from '../types/itinerary'
+import type {
+  Activity,
+  BookingDetail,
+  BookingRequirement,
+  BookingStatus,
+  Day,
+  Destination,
+} from '../types/itinerary'
 
 interface BookingState {
   getStatus: (activityId: string) => BookingStatus | undefined
+  getDetail: (activityId: string) => BookingDetail
   setStatus: (activityId: string, status: BookingStatus) => void
+  setDetail: (activityId: string, detail: BookingDetail) => void
   resetBookingStatus: () => void
 }
 
 interface Props {
   isActivityActive: (id: string) => boolean
   bookingState: BookingState
+  onJumpToDay?: (dayId: string) => void
+  onFocusActivity?: (activity: Activity) => void
 }
 
 interface BookingItem {
@@ -29,8 +40,15 @@ interface BookingItem {
 
 const PACKING_STORAGE_KEY = 'trip-packing-checked-v1'
 const STATUS_ORDER: BookingStatus[] = ['todo', 'optional', 'booked', 'not_needed']
+type BookingFilter = BookingStatus | 'all'
 
-export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
+export function TravelPrepPanel({
+  isActivityActive,
+  bookingState,
+  onJumpToDay,
+  onFocusActivity,
+}: Props) {
+  const [bookingFilter, setBookingFilter] = useState<BookingFilter>('all')
   const bookingItems = useMemo(
     () => getBookingRequirements()
       .map(requirement => {
@@ -54,6 +72,10 @@ export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
     [bookingState, isActivityActive]
   )
 
+  const filteredBookingItems = bookingFilter === 'all'
+    ? bookingItems
+    : bookingItems.filter(item => item.status === bookingFilter)
+
   const bookingCounts = STATUS_ORDER.reduce<Record<BookingStatus, number>>((acc, status) => {
     acc[status] = bookingItems.filter(item => item.status === status).length
     return acc
@@ -63,6 +85,14 @@ export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
     optional: 0,
     not_needed: 0,
   })
+
+  const resolvedCount = bookingCounts.booked + bookingCounts.not_needed
+  const completion = bookingItems.length > 0
+    ? Math.round((resolvedCount / bookingItems.length) * 100)
+    : 100
+  const nextActionItems = bookingItems
+    .filter(item => item.status === 'todo' || item.status === 'optional')
+    .slice(0, 3)
 
   const packingItems = useMemo(() => generatePackingList(), [])
   const [checkedPacking, setCheckedPacking] = useState<Set<string>>(readCheckedPacking)
@@ -91,7 +121,7 @@ export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
 
   return (
     <section className="max-w-7xl mx-auto px-6 pb-6">
-      <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="rounded-lg border border-[#D6E4EA] bg-card/92 p-5 shadow-sm transition-shadow duration-300 hover:shadow-[0_18px_42px_rgba(42,68,82,0.10)]">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
@@ -110,7 +140,13 @@ export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
 
           <div className="mb-4 grid grid-cols-4 gap-2">
             {STATUS_ORDER.map(status => (
-              <div key={status} className="rounded-lg bg-[#EEF5F8] px-3 py-2">
+              <button
+                key={status}
+                onClick={() => setBookingFilter(bookingFilter === status ? 'all' : status)}
+                className={`rounded-lg px-3 py-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${
+                  bookingFilter === status ? 'bg-card shadow-sm ring-1 ring-[#B8C9D3]' : 'bg-[#EEF5F8]'
+                }`}
+              >
                 <div
                   className="text-lg font-bold"
                   style={{ color: BOOKING_STATUS_COLORS[status] }}
@@ -118,12 +154,60 @@ export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
                   {bookingCounts[status]}
                 </div>
                 <div className="text-xs text-slate-500">{BOOKING_STATUS_LABELS[status]}</div>
-              </div>
+              </button>
             ))}
           </div>
 
-          <div className="space-y-2">
-            {bookingItems.map(item => (
+          <div className="mb-4 rounded-lg border border-[#D6E4EA] bg-[#F7FBFC] p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold text-slate-900">预订完成度</span>
+              <button
+                onClick={() => setBookingFilter('all')}
+                className="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 hover:text-slate-900"
+              >
+                显示全部
+              </button>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-[#E4EEF3]">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                style={{ width: `${completion}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+              <span>{resolvedCount}/{bookingItems.length} 已处理</span>
+              <span>{completion}%</span>
+            </div>
+            {nextActionItems.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {nextActionItems.map(item => (
+                  <button
+                    key={item.requirement.activityId}
+                    onClick={() => {
+                      onFocusActivity?.(item.activity)
+                      onJumpToDay?.(item.day.id)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-[#EEF5F8]"
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: BOOKING_STATUS_COLORS[item.status] }}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">
+                      下一步：{item.requirement.label}
+                    </span>
+                    <span className="text-xs text-slate-400">{item.requirement.deadline ?? '待确认'}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="max-h-[440px] space-y-2 overflow-y-auto pr-1">
+            {filteredBookingItems.map(item => {
+              const detail = bookingState.getDetail(item.requirement.activityId)
+
+              return (
               <div
                 key={item.requirement.activityId}
                 className="rounded-lg border border-[#D6E4EA] bg-[#F7FBFC] p-3 transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:shadow-sm"
@@ -152,16 +236,49 @@ export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
                     <div className="text-xs leading-relaxed text-slate-500">
                       {item.requirement.note}
                     </div>
-                    {item.requirement.bookingUrl && (
-                      <a
-                        href={item.requirement.bookingUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-flex text-xs font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950"
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      {item.requirement.bookingUrl && (
+                        <a
+                          href={item.requirement.bookingUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex text-xs font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950"
+                        >
+                          {item.requirement.sourceName ?? '打开预订页面'}
+                        </a>
+                      )}
+                      <button
+                        onClick={() => {
+                          onFocusActivity?.(item.activity)
+                          onJumpToDay?.(item.day.id)
+                        }}
+                        className="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 hover:text-slate-900"
                       >
-                        {item.requirement.sourceName ?? '打开预订页面'}
-                      </a>
-                    )}
+                        定位行程
+                      </button>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <input
+                        value={detail.reference ?? ''}
+                        onChange={event =>
+                          bookingState.setDetail(item.requirement.activityId, {
+                            reference: event.target.value,
+                          })
+                        }
+                        placeholder="预订号 / 确认码"
+                        className="rounded-lg border border-[#D6E4EA] bg-card px-3 py-2 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-[#B8C9D3]"
+                      />
+                      <input
+                        value={detail.note ?? ''}
+                        onChange={event =>
+                          bookingState.setDetail(item.requirement.activityId, {
+                            note: event.target.value,
+                          })
+                        }
+                        placeholder="备注：人数、场次、取票点"
+                        className="rounded-lg border border-[#D6E4EA] bg-card px-3 py-2 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-[#B8C9D3]"
+                      />
+                    </div>
                   </div>
 
                   <select
@@ -183,7 +300,8 @@ export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
                   </select>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
@@ -203,7 +321,7 @@ export function TravelPrepPanel({ isActivityActive, bookingState }: Props) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="max-h-[640px] space-y-4 overflow-y-auto pr-1">
             {Object.entries(packingGroups).map(([category, items]) => (
               <div key={category}>
                 <div className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">

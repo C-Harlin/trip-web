@@ -15,6 +15,7 @@ interface Props {
   activeDayId: string | null
   onMarkerClick: (activity: Activity) => void
   hoveredActivity?: Activity | null
+  focusedActivity?: Activity | null
 }
 
 interface MarkerData {
@@ -97,7 +98,13 @@ function createMarkerElement(
   return wrap
 }
 
-export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredActivity }: Props) {
+export function TripMap({
+  isActivityActive,
+  activeDayId,
+  onMarkerClick,
+  hoveredActivity,
+  focusedActivity,
+}: Props) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ''
   const rawMapId = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? '').trim()
   const mapId = MAP_ID_PLACEHOLDERS.has(rawMapId) ? '' : rawMapId
@@ -108,11 +115,12 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
     libraries: LIBRARIES,
   })
 
-  const { onMapLoad, panToDay } = useMapSync()
+  const { onMapLoad, panToDay, panToActivity } = useMapSync()
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const mapRef = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<Map<string, google.maps.marker.AdvancedMarkerElement>>(new Map())
   const prevDayId = useRef<string | null>(null)
+  const prevActivityId = useRef<string | null>(null)
 
   // Pan to day when activeDayId changes
   useEffect(() => {
@@ -121,6 +129,21 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
       panToDay(activeDayId)
     }
   }, [activeDayId, isLoaded, panToDay])
+
+  // Pan to a specific activity when cards, booking alerts, or today view focus it.
+  useEffect(() => {
+    if (
+      focusedActivity &&
+      focusedActivity.id !== prevActivityId.current &&
+      focusedActivity.lat != null &&
+      focusedActivity.lng != null &&
+      isLoaded
+    ) {
+      prevActivityId.current = focusedActivity.id
+      setSelectedActivity(focusedActivity)
+      panToActivity(focusedActivity)
+    }
+  }, [focusedActivity, isLoaded, panToActivity])
 
   // Build one route per day so the map can focus on the active day's sequence.
   const dayRoutes = useMemo<RouteLine[]>(
@@ -170,10 +193,11 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
   useEffect(() => {
     markersRef.current.forEach((marker, id) => {
       const isHovered = hoveredActivity?.id === id
-      if (isHovered) {
+      const isFocused = focusedActivity?.id === id
+      if (isHovered || isFocused) {
         marker.zIndex = 999
         if (marker.element) {
-          ;(marker.element as HTMLElement).style.transform = 'scale(1.35)'
+          ;(marker.element as HTMLElement).style.transform = isHovered ? 'scale(1.35)' : 'scale(1.22)'
         }
       } else {
         marker.zIndex = activeMarkerIds.has(id) ? 20 : 1
@@ -182,7 +206,7 @@ export function TripMap({ isActivityActive, activeDayId, onMarkerClick, hoveredA
         }
       }
     })
-  }, [activeMarkerIds, hoveredActivity])
+  }, [activeMarkerIds, focusedActivity, hoveredActivity])
 
   // 目的地间转场虚线（悉尼→大洋路→墨尔本）
   const transitPolylines = useMemo(() => {

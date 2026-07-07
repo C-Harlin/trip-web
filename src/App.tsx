@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { HeroSection } from './components/HeroSection'
 import { DestinationCards } from './components/DestinationCards'
 import { TripHighlights } from './components/TripHighlights'
+import { TodayView } from './components/TodayView'
 import { TravelPrepPanel } from './components/TravelPrepPanel'
 import { DestinationChapterCovers } from './components/DestinationChapterCovers'
 import { ItineraryLayout } from './components/ItineraryLayout'
@@ -30,6 +31,14 @@ export default function App() {
   const [activeDayId, setActiveDayId] = useState<string | null>('syd-d1')
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const [hoveredActivity, setHoveredActivity] = useState<Activity | null>(null)
+  const [focusedActivity, setFocusedActivity] = useState<Activity | null>(null)
+
+  const scrollToDay = useCallback((dayId: string) => {
+    setTimeout(() => {
+      const el = document.querySelector(`[data-day-id="${dayId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 50)
+  }, [])
 
   // When a destination card is clicked, scroll to its first day
   const handleDestinationClick = useCallback((destId: string) => {
@@ -37,24 +46,30 @@ export default function App() {
     const firstDay = dest?.days[0]?.id ?? null
     if (firstDay) {
       setActiveDayId(firstDay)
-      // Scroll left panel to that day
-      setTimeout(() => {
-        const el = document.querySelector(`[data-day-id="${firstDay}"]`)
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 50)
+      scrollToDay(firstDay)
     }
-  }, [])
+  }, [scrollToDay])
 
   // When a map marker is clicked, highlight its day and scroll left panel
   const handleMarkerClick = useCallback((activity: Activity) => {
     // Extract dayId from activityId: e.g. "syd-d1-a2" → "syd-d1"
     const dayId = activity.id.replace(/-a\d+$/, '')
     setActiveDayId(dayId)
-    setTimeout(() => {
-      const el = document.querySelector(`[data-day-id="${dayId}"]`)
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 50)
-  }, [])
+    setFocusedActivity(activity)
+    scrollToDay(dayId)
+  }, [scrollToDay])
+
+  const handleDayJump = useCallback((dayId: string) => {
+    setActiveDayId(dayId)
+    scrollToDay(dayId)
+  }, [scrollToDay])
+
+  const handleActivityFocus = useCallback((activity: Activity) => {
+    const dayId = activity.id.replace(/-a\d+$/, '')
+    setActiveDayId(dayId)
+    setFocusedActivity(activity)
+    scrollToDay(dayId)
+  }, [scrollToDay])
 
   return (
     <div className="min-h-screen bg-[#EEF5F8] text-slate-900">
@@ -67,9 +82,18 @@ export default function App() {
 
       <TripHighlights />
 
+      <TodayView
+        isActivityActive={isActivityActive}
+        getBookingStatus={bookingState.getStatus}
+        onJumpToDay={handleDayJump}
+        onFocusActivity={handleActivityFocus}
+      />
+
       <TravelPrepPanel
         isActivityActive={isActivityActive}
         bookingState={bookingState}
+        onJumpToDay={handleDayJump}
+        onFocusActivity={handleActivityFocus}
       />
 
       <DestinationChapterCovers />
@@ -83,6 +107,8 @@ export default function App() {
             onOpenCustomizer={() => setCustomizerOpen(true)}
             getBookingStatus={bookingState.getStatus}
             onActivityHover={setHoveredActivity}
+            onActivityClick={handleActivityFocus}
+            focusedActivityId={focusedActivity?.id ?? null}
           />
         }
         right={
@@ -91,6 +117,7 @@ export default function App() {
             activeDayId={activeDayId}
             onMarkerClick={handleMarkerClick}
             hoveredActivity={hoveredActivity}
+            focusedActivity={focusedActivity}
           />
         }
       />

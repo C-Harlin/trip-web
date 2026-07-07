@@ -12,6 +12,8 @@ interface Props {
   onOpenCustomizer: () => void
   getBookingStatus?: (activityId: string) => BookingStatus | undefined
   onActivityHover?: (activity: Activity | null) => void
+  onActivityClick?: (activity: Activity) => void
+  focusedActivityId?: string | null
 }
 
 export function DayList({
@@ -21,6 +23,8 @@ export function DayList({
   onOpenCustomizer,
   getBookingStatus,
   onActivityHover,
+  onActivityClick,
+  focusedActivityId,
 }: Props) {
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -112,6 +116,8 @@ export function DayList({
                         isFirst={index === 0}
                         isLast={index === day.activities.length - 1}
                         onHover={onActivityHover}
+                        onClick={onActivityClick}
+                        isFocused={focusedActivityId === activity.id}
                       />
                     ))}
                   </div>
