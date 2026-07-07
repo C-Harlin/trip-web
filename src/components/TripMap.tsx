@@ -98,6 +98,16 @@ function createMarkerElement(
   return wrap
 }
 
+function getGoogleMapsUrl(activity: Activity): string {
+  if (activity.googleMapsUrl) return activity.googleMapsUrl
+
+  const query = activity.lat != null && activity.lng != null
+    ? `${activity.title} ${activity.lat},${activity.lng}`
+    : activity.title
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}
+
 export function TripMap({
   isActivityActive,
   activeDayId,
@@ -442,16 +452,32 @@ export function TripMap({
           onCloseClick={() => setSelectedActivity(null)}
           options={{ pixelOffset: new window.google.maps.Size(0, -14) }}
         >
-          <div style={{ color: '#111', maxWidth: 220, padding: '2px 4px' }}>
-            <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 13 }}>
+          <div style={{ color: '#111827', maxWidth: 260, padding: '4px 6px 6px' }}>
+            <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 15, lineHeight: 1.35 }}>
               {selectedActivity.title}
             </div>
-            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.4 }}>
-              {selectedActivity.description}
+            <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.45 }}>
+              {selectedActivity.description || selectedActivity.mapLabel}
             </div>
-            <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>
               {selectedActivity.time}
             </div>
+            <a
+              href={getGoogleMapsUrl(selectedActivity)}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'inline-flex',
+                marginTop: 8,
+                color: '#1A73E8',
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: 'underline',
+                textUnderlineOffset: 3,
+              }}
+            >
+              View Details on Google Maps
+            </a>
           </div>
         </InfoWindow>
       )}
