@@ -1,17 +1,17 @@
 # 澳洲旅行攻略 Web App
 
-一款展示澳洲行程（2026年 9/25–10/6，悉尼→大洋路→墨尔本）的个人旅行攻略站。访客可独立勾选/取消目的地与活动，定制状态编码到 URL，支持一键分享。
+一款展示澳洲行程（2026年 9/25–10/6，悉尼→大洋路→墨尔本）的旅行攻略应用，支持地图联动、行程编辑、预订追踪、离线访问与多人协作。
 
 ---
 
 ## 功能特性
 
-- 🗺️ **互动地图**：Google Maps 深色主题，景点标记 + 路线动线
-- 📅 **按天浏览**：左侧行程列表按目的地分组，点击日期展开活动详情
-- 🌤 **天气穿搭**：按天展示天气预报 / 季节参考，并给出适合年轻女性旅行的穿搭建议
-- ✅ **行程定制**：勾选/取消目的地、天、活动，地图实时同步
-- 🔗 **一键分享**：定制状态序列化到 URL，分享给朋友直接还原
-- 📱 **响应式**：桌面端左右分栏，移动端垂直堆叠
+- **互动地图**：Google Maps 景点标记、路线与行程联动
+- **行程编辑**：新增、修改、排序、备选标记和本地持久化
+- **出行准备**：天气提示、预订追踪、旅行凭证和 Packing List
+- **离线访问**：PWA 应用壳与本地数据缓存
+- **多人协作**：Supabase 邮箱登录、邀请链接、实时同步和版本冲突检测
+- **响应式体验**：桌面双栏与移动端上下文地图、底部导航
 
 ---
 
@@ -19,7 +19,7 @@
 
 ### 前置要求
 
-- Node.js ≥ 18
+- Node.js 20、22 或 24+
 - Google Maps API Key
 - Google Maps Map ID（地点标记依赖 Advanced Markers，必须配置；本地测试可临时使用 `DEMO_MAP_ID`）
 
@@ -31,7 +31,7 @@ npm install
 
 # 配置环境变量
 cp .env.example .env.local
-# 编辑 .env.local，填入你的 Google Maps API Key 和 Map ID
+# 编辑 .env.local，至少填入 Google Maps API Key 和 Map ID
 
 # 启动开发服务器
 npm run dev
@@ -53,7 +53,19 @@ npm run dev
 # .env.local（不提交 Git）
 VITE_GOOGLE_MAPS_KEY=your_api_key_here
 VITE_GOOGLE_MAPS_MAP_ID=your_map_id_here   # 本地测试可临时使用 DEMO_MAP_ID
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+### 启用多人协作
+
+1. 在 Supabase 创建项目。
+2. 打开 SQL Editor，执行 `supabase/schema.sql`。
+3. 在 Authentication → URL Configuration 中加入本地和正式站点地址。
+4. 将 Project Settings → API 中的 Project URL 和 anon key 写入 `.env.local`。
+5. 重启开发服务，点击页面头部的“协作”。
+
+未配置 Supabase 时应用自动保持本地模式，已有编辑功能不受影响。协作链接包含 `trip` 和 `invite` 参数；首次打开的成员需要通过邮箱登录，随后自动加入行程。
 
 ---
 
@@ -68,6 +80,8 @@ VITE_GOOGLE_MAPS_MAP_ID=your_map_id_here   # 本地测试可临时使用 DEMO_MA
 3. **配置环境变量**（Vercel Dashboard → Settings → Environment Variables）
    - `VITE_GOOGLE_MAPS_KEY`
    - `VITE_GOOGLE_MAPS_MAP_ID`
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
 
 4. 点击 **Deploy**，每次 `git push` 自动重新部署
 
@@ -75,9 +89,7 @@ VITE_GOOGLE_MAPS_MAP_ID=your_map_id_here   # 本地测试可临时使用 DEMO_MA
 
 ## 分享行程
 
-1. 点击「⚙ 定制行程」→ 勾选/取消目的地、活动
-2. 点击「生成我的行程 ✓」
-3. 点击「🔗 分享行程」→ 链接已复制到剪贴板
+普通分享使用头部“分享行程”。多人编辑使用“协作”创建云端行程，再复制邀请链接。
 
 ---
 
@@ -94,9 +106,10 @@ Activity ID 格式：`{目的地缩写}-d{天序号}-a{活动序号}`，如 `syd
 | 层级 | 选型 |
 |------|------|
 | 框架 | Vite 8 + React 19 + TypeScript 6 |
-| 样式 | Tailwind CSS 3（深色主题） |
+| 样式 | Tailwind CSS 3 + Lucide Icons |
 | 地图 | Google Maps JavaScript API |
 | 天气 | Open-Meteo Forecast API（无 API Key，前端缓存） |
-| 状态管理 | URL SearchParams（`?skip=...`） |
-| 测试 | Vitest（17 个测试） |
+| 云端协作 | Supabase Auth + Postgres + Realtime + RLS |
+| 状态管理 | 本地优先缓存 + URL SearchParams + 云端版本号 |
+| 测试 | Vitest |
 | 部署 | GitHub → Vercel（免费计划） |

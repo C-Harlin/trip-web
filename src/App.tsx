@@ -206,7 +206,7 @@ export default function App() {
   return (
     <div id="overview" className="min-h-screen scroll-mt-3 bg-[#EEF5F8] pb-24 text-slate-900 md:pb-0">
       <OfflineStatus />
-      <HeroSection itinerary={itinerary} skipped={skipped} />
+      <HeroSection itinerary={itinerary} skipped={skipped} collaboration={editableItinerary.collaboration} />
 
       <DestinationCards
         itinerary={itinerary}

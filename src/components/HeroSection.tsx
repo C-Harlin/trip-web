@@ -1,12 +1,15 @@
 import { ShareButton } from './ShareButton'
 import type { Itinerary } from '../types/itinerary'
+import { CollaborationButton } from './CollaborationButton'
+import type { CollaborationController } from '../hooks/useEditableItinerary'
 
 interface Props {
   itinerary: Itinerary
   skipped: Set<string>
+  collaboration: CollaborationController
 }
 
-export function HeroSection({ itinerary, skipped }: Props) {
+export function HeroSection({ itinerary, skipped, collaboration }: Props) {
   const destinations = itinerary.destinations
 
   const totalDays = destinations.reduce((sum, d) => sum + d.days.length, 0)
@@ -34,7 +37,8 @@ export function HeroSection({ itinerary, skipped }: Props) {
             </h1>
             <p className="mt-3 text-base font-medium text-slate-700 md:text-lg">{itinerary.subtitle}</p>
           </div>
-          <div className="mt-1 flex-shrink-0">
+          <div className="mt-1 flex flex-shrink-0 gap-2">
+            <CollaborationButton collaboration={collaboration} />
             <ShareButton skipped={skipped} />
           </div>
         </div>
