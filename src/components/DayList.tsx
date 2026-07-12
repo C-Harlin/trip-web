@@ -1,11 +1,12 @@
 import { useRef, type ReactNode } from 'react'
-import { itinerary } from '../data/itinerary'
 import { ActivityCard } from './ActivityCard'
 import { WeatherPanel } from './WeatherPanel'
-import type { Activity } from '../types/itinerary'
+import type { Activity, Itinerary } from '../types/itinerary'
 import type { BookingStatus } from '../types/itinerary'
+import { ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react'
 
 interface Props {
+  itinerary: Itinerary
   isActivityActive: (id: string) => boolean
   activeDayId: string | null
   onDayClick: (dayId: string) => void
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function DayList({
+  itinerary,
   isActivityActive,
   activeDayId,
   onDayClick,
@@ -80,7 +82,7 @@ export function DayList({
                 className={`mx-2 mb-1 rounded-lg border transition-all duration-200 cursor-pointer ${
                   isActive
                     ? 'border-[#D6E4EA] bg-[#EEF5F8] shadow-sm'
-                    : 'border-transparent hover:-translate-y-0.5 hover:border-[#D6E4EA] hover:bg-[#F2F7F9] hover:shadow-sm'
+                    : 'border-transparent hover:border-[#D6E4EA] hover:bg-[#F2F7F9]'
                 }`}
                 onClick={() => onDayClick(day.id)}
               >
@@ -94,9 +96,9 @@ export function DayList({
                   </div>
                   <span className="text-muted text-xs">{day.weekday}</span>
                   <span className="text-sm font-medium text-slate-900 ml-auto truncate">{day.label}</span>
-                  <span className="text-muted text-xs flex-shrink-0 ml-1">
-                    {isActive ? '▲' : '▼'}
-                  </span>
+                  {isActive
+                    ? <ChevronUp size={15} className="ml-1 flex-shrink-0 text-slate-400" />
+                    : <ChevronDown size={15} className="ml-1 flex-shrink-0 text-slate-400" />}
                 </div>
 
                 {/* Activities (shown when this day is selected) */}
@@ -147,7 +149,7 @@ export function DayList({
           }}
           className="w-full py-3 rounded-lg border border-[#D6E4EA] bg-card text-sm font-medium text-slate-700 hover:bg-[#EEF5F8] transition-all"
         >
-          ⚙ 定制行程
+          <span className="inline-flex items-center gap-2"><SlidersHorizontal size={16} />编辑行程</span>
         </button>
       </div>
     </div>

@@ -4,7 +4,6 @@ import {
   BOOKING_STATUS_LABELS,
   getBookingRequirements,
 } from '../data/booking'
-import { itinerary } from '../data/itinerary'
 import { generatePackingList } from '../utils/packingList'
 import type {
   Activity,
@@ -13,6 +12,7 @@ import type {
   BookingStatus,
   Day,
   Destination,
+  Itinerary,
 } from '../types/itinerary'
 
 interface BookingState {
@@ -24,6 +24,7 @@ interface BookingState {
 }
 
 interface Props {
+  itinerary: Itinerary
   isActivityActive: (id: string) => boolean
   bookingState: BookingState
   onJumpToDay?: (dayId: string) => void
@@ -45,6 +46,7 @@ const STATUS_ORDER: BookingStatus[] = ['todo', 'optional', 'booked', 'not_needed
 type BookingFilter = BookingStatus | 'all'
 
 export function TravelPrepPanel({
+  itinerary,
   isActivityActive,
   bookingState,
   onJumpToDay,
@@ -53,10 +55,12 @@ export function TravelPrepPanel({
   onNavigate,
 }: Props) {
   const [bookingFilter, setBookingFilter] = useState<BookingFilter>('all')
+  const [credentialsOnly, setCredentialsOnly] = useState(false)
+  const [credentialsCopied, setCredentialsCopied] = useState(false)
   const bookingItems = useMemo(
     () => getBookingRequirements()
       .map(requirement => {
-        const context = findActivityContext(requirement.activityId)
+        const context = findActivityContext(itinerary, requirement.activityId)
         if (!context) return null
 
         return {
@@ -73,12 +77,33 @@ export function TravelPrepPanel({
         if (statusDiff !== 0) return statusDiff
         return a.day.id.localeCompare(b.day.id)
       }),
-    [bookingState, isActivityActive]
+    [bookingState, isActivityActive, itinerary]
   )
 
-  const filteredBookingItems = bookingFilter === 'all'
+  const statusFilteredBookingItems = bookingFilter === 'all'
     ? bookingItems
     : bookingItems.filter(item => item.status === bookingFilter)
+  const filteredBookingItems = credentialsOnly
+    ? bookingItems.filter(item => {
+        const detail = bookingState.getDetail(item.requirement.activityId)
+        return item.status === 'booked' && Boolean(detail.reference || detail.note)
+      })
+    : statusFilteredBookingItems
+
+  const copyCredentials = async () => {
+    const text = filteredBookingItems.map(item => {
+      const detail = bookingState.getDetail(item.requirement.activityId)
+      return [
+        `${item.day.date} ${item.requirement.label}`,
+        detail.reference ? `确认号：${detail.reference}` : '',
+        detail.note ? `备注：${detail.note}` : '',
+      ].filter(Boolean).join('\n')
+    }).join('\n\n')
+    if (!text) return
+    await navigator.clipboard.writeText(text)
+    setCredentialsCopied(true)
+    window.setTimeout(() => setCredentialsCopied(false), 1800)
+  }
 
   const bookingCounts = STATUS_ORDER.reduce<Record<BookingStatus, number>>((acc, status) => {
     acc[status] = bookingItems.filter(item => item.status === status).length
@@ -311,12 +336,23 @@ export function TravelPrepPanel({
               </div>
               <h2 className="text-lg font-bold text-slate-900">预订状态追踪</h2>
             </div>
-            <button
-              onClick={bookingState.resetBookingStatus}
-              className="rounded-lg border border-[#D6E4EA] px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-[#E7F0F4]"
-            >
-              恢复默认
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setCredentialsOnly(value => !value)
+                  setBookingFilter('all')
+                }}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${credentialsOnly ? 'border-slate-800 bg-slate-900 text-white' : 'border-[#D6E4EA] text-slate-600 hover:bg-[#E7F0F4]'}`}
+              >
+                旅行凭证
+              </button>
+              <button
+                onClick={bookingState.resetBookingStatus}
+                className="rounded-lg border border-[#D6E4EA] px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-[#E7F0F4]"
+              >
+                恢复默认
+              </button>
+            </div>
           </div>
 
           <div className="mb-4 grid grid-cols-4 gap-2">
@@ -324,6 +360,7 @@ export function TravelPrepPanel({
               <button
                 key={status}
                 onClick={() => setBookingFilter(bookingFilter === status ? 'all' : status)}
+                disabled={credentialsOnly}
                 className={`rounded-lg px-3 py-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${
                   bookingFilter === status ? 'bg-card shadow-sm ring-1 ring-[#B8C9D3]' : 'bg-[#EEF5F8]'
                 }`}
@@ -384,7 +421,24 @@ export function TravelPrepPanel({
             )}
           </div>
 
+          {credentialsOnly && (
+            <div className="mb-3 flex items-center justify-between rounded-lg border border-[#D6E4EA] bg-[#EEF5F8] px-3 py-2">
+              <div>
+                <div className="text-xs font-semibold text-slate-800">离线旅行凭证</div>
+                <div className="text-[11px] text-slate-500">已预订且填写了确认信息的项目</div>
+              </div>
+              <button type="button" disabled={filteredBookingItems.length === 0} onClick={copyCredentials} className="rounded-md bg-card px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm disabled:opacity-40">
+                {credentialsCopied ? '已复制' : '复制汇总'}
+              </button>
+            </div>
+          )}
+
           <div className="max-h-[440px] space-y-2 overflow-y-auto pr-1">
+            {credentialsOnly && filteredBookingItems.length === 0 && (
+              <div className="rounded-lg border border-dashed border-[#CADAE2] px-4 py-8 text-center text-sm text-slate-500">
+                将项目设为“已预订”并填写确认号后，会出现在这里。
+              </div>
+            )}
             {filteredBookingItems.map(item => {
               const detail = bookingState.getDetail(item.requirement.activityId)
 
@@ -553,7 +607,7 @@ export function TravelPrepPanel({
   )
 }
 
-function findActivityContext(activityId: string) {
+function findActivityContext(itinerary: Itinerary, activityId: string) {
   for (const destination of itinerary.destinations) {
     for (const day of destination.days) {
       const activity = day.activities.find(activity => activity.id === activityId)

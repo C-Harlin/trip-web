@@ -4,17 +4,21 @@ import { DestinationCards } from './components/DestinationCards'
 import { TripHighlights } from './components/TripHighlights'
 import { TodayView } from './components/TodayView'
 import { TravelPrepPanel } from './components/TravelPrepPanel'
-import { DestinationChapterCovers } from './components/DestinationChapterCovers'
 import { ItineraryLayout } from './components/ItineraryLayout'
 import { DayList } from './components/DayList'
 import { TripMap } from './components/TripMap'
 import { CustomizerDrawer } from './components/CustomizerDrawer'
+import { MobileBottomNav } from './components/MobileBottomNav'
+import { OfflineStatus } from './components/OfflineStatus'
 import { useItineraryState } from './hooks/useItineraryState'
 import { useBookingState } from './hooks/useBookingState'
-import { itinerary } from './data/itinerary'
+import { useEditableItinerary } from './hooks/useEditableItinerary'
 import type { Activity } from './types/itinerary'
 
 type AppView = 'home' | 'booking' | 'packing'
+type HomeSection = 'overview' | 'today' | 'itinerary' | 'prep'
+
+const HOME_SCROLL_KEY = 'trip-home-scroll-v1'
 
 function readViewFromHash(): AppView {
   if (typeof window === 'undefined') return 'home'
@@ -24,7 +28,9 @@ function readViewFromHash(): AppView {
 }
 
 export default function App() {
-  const itineraryState = useItineraryState()
+  const editableItinerary = useEditableItinerary()
+  const { itinerary } = editableItinerary
+  const itineraryState = useItineraryState(itinerary)
   const bookingState = useBookingState()
   const {
     skipped,
@@ -52,6 +58,15 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (view !== 'home') return
+    const savedScroll = Number(window.sessionStorage.getItem(HOME_SCROLL_KEY) ?? 0)
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: savedScroll, behavior: 'auto' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [view])
+
+  useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)')
     const update = () => setIsMobile(media.matches)
     update()
@@ -60,15 +75,19 @@ export default function App() {
   }, [])
 
   const navigate = useCallback((nextView: AppView) => {
+    if (nextView !== 'home' && view === 'home') {
+      window.sessionStorage.setItem(HOME_SCROLL_KEY, String(window.scrollY))
+    }
     const nextHash = nextView === 'home' ? '' : `#${nextView}`
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash
     } else {
       setView(nextView)
     }
-    if (nextView === 'home') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
+  }, [view])
+
+  const navigateHomeSection = useCallback((sectionId: HomeSection) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
   const scrollToDay = useCallback((dayId: string) => {
@@ -100,7 +119,7 @@ export default function App() {
       setActiveDayId(firstDay)
       scrollToMap(firstDay)
     }
-  }, [scrollToMap])
+  }, [itinerary.destinations, scrollToMap])
 
   // When a map marker is clicked, highlight its day and scroll left panel
   const handleMarkerClick = useCallback((activity: Activity) => {
@@ -138,6 +157,7 @@ export default function App() {
 
   const renderTripMap = () => (
     <TripMap
+      itinerary={itinerary}
       isActivityActive={isActivityActive}
       activeDayId={activeDayId}
       onMarkerClick={handleMarkerClick}
@@ -150,6 +170,7 @@ export default function App() {
   if (view !== 'home') {
     return (
       <div className="min-h-screen bg-[#EEF5F8] text-slate-900">
+        <OfflineStatus />
         <div className="border-b border-[#D6E4EA] bg-card/90">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
             <div>
@@ -170,6 +191,7 @@ export default function App() {
         </div>
 
         <TravelPrepPanel
+          itinerary={itinerary}
           mode={view}
           isActivityActive={isActivityActive}
           bookingState={bookingState}
@@ -182,55 +204,66 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#EEF5F8] text-slate-900">
-      <HeroSection skipped={skipped} />
+    <div id="overview" className="min-h-screen scroll-mt-3 bg-[#EEF5F8] pb-24 text-slate-900 md:pb-0">
+      <OfflineStatus />
+      <HeroSection itinerary={itinerary} skipped={skipped} />
 
       <DestinationCards
+        itinerary={itinerary}
         isDestinationActive={isDestinationActive}
         onDestinationClick={handleDestinationClick}
       />
 
-      <TripHighlights />
+      <TripHighlights itinerary={itinerary} />
 
-      <TodayView
-        isActivityActive={isActivityActive}
-        getBookingStatus={bookingState.getStatus}
-        onJumpToDay={handleDayJump}
-        onFocusActivity={handleActivityFocus}
-      />
+      <div id="today" className="scroll-mt-3">
+        <TodayView
+          itinerary={itinerary}
+          isActivityActive={isActivityActive}
+          getBookingStatus={bookingState.getStatus}
+          onJumpToDay={handleDayJump}
+          onFocusActivity={handleActivityFocus}
+        />
+      </div>
 
-      <TravelPrepPanel
-        mode="summary"
-        isActivityActive={isActivityActive}
-        bookingState={bookingState}
-        onJumpToDay={handleDayJump}
-        onFocusActivity={handleActivityFocus}
-        onNavigate={navigate}
-      />
-
-      <DestinationChapterCovers />
-
-      <ItineraryLayout
-        isMobile={isMobile}
-        left={
+      <div id="itinerary" className="scroll-mt-3">
+        <ItineraryLayout
+          isMobile={isMobile}
+          left={
           <DayList
-            isActivityActive={isActivityActive}
-            activeDayId={activeDayId}
-            onDayClick={handleDayClick}
-            onOpenCustomizer={() => setCustomizerOpen(true)}
-            getBookingStatus={bookingState.getStatus}
-            onActivityHover={setHoveredActivity}
-            onActivityClick={handleActivityFocus}
-            focusedActivityId={focusedActivity?.id ?? null}
-            mobileMap={isMobile ? renderTripMap() : undefined}
-          />
-        }
-        right={
-          isMobile ? null : renderTripMap()
-        }
-      />
+              itinerary={itinerary}
+              isActivityActive={isActivityActive}
+              activeDayId={activeDayId}
+              onDayClick={handleDayClick}
+              onOpenCustomizer={() => setCustomizerOpen(true)}
+              getBookingStatus={bookingState.getStatus}
+              onActivityHover={setHoveredActivity}
+              onActivityClick={handleActivityFocus}
+              focusedActivityId={focusedActivity?.id ?? null}
+              mobileMap={isMobile ? renderTripMap() : undefined}
+            />
+          }
+          right={
+            isMobile ? null : renderTripMap()
+          }
+        />
+      </div>
+
+      <div id="prep" className="scroll-mt-3 pt-6">
+        <TravelPrepPanel
+          itinerary={itinerary}
+          mode="summary"
+          isActivityActive={isActivityActive}
+          bookingState={bookingState}
+          onJumpToDay={handleDayJump}
+          onFocusActivity={handleActivityFocus}
+          onNavigate={navigate}
+        />
+      </div>
 
       <CustomizerDrawer
+        itinerary={itinerary}
+        editor={editableItinerary}
         isOpen={customizerOpen}
         onClose={() => setCustomizerOpen(false)}
         state={{
@@ -243,6 +276,8 @@ export default function App() {
           resetAll,
         }}
       />
+
+      <MobileBottomNav onNavigate={navigateHomeSection} />
     </div>
   )
 }

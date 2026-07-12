@@ -1,7 +1,7 @@
-import { itinerary } from '../data/itinerary'
-import type { Destination } from '../types/itinerary'
+import type { Destination, Itinerary } from '../types/itinerary'
 
 interface Props {
+  itinerary: Itinerary
   isDestinationActive: (destId: string) => boolean
   onDestinationClick: (destId: string) => void
 }
@@ -18,7 +18,7 @@ function DestinationCard({
   return (
     <button
       onClick={onClick}
-      className={`group flex-1 min-w-[220px] overflow-hidden text-left rounded-lg border transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(42,68,82,0.13)] ${
+      className={`group flex-1 min-w-[220px] overflow-hidden text-left rounded-lg border transition-shadow duration-300 cursor-pointer hover:shadow-[0_14px_32px_rgba(42,68,82,0.11)] ${
         isActive ? 'shadow-[0_18px_45px_rgba(42,68,82,0.13)]' : 'opacity-[0.76]'
       }`}
       style={{
@@ -63,7 +63,7 @@ function DestinationCard({
   )
 }
 
-export function DestinationCards({ isDestinationActive, onDestinationClick }: Props) {
+export function DestinationCards({ itinerary, isDestinationActive, onDestinationClick }: Props) {
   return (
     <div className="max-w-7xl mx-auto px-6 py-5">
       <div className="flex gap-4 flex-wrap md:flex-nowrap">

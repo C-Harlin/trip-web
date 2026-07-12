@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { GoogleMap, useJsApiLoader, Polyline, InfoWindow } from '@react-google-maps/api'
-import { itinerary } from '../data/itinerary'
-import type { Activity } from '../types/itinerary'
+import type { Activity, Itinerary } from '../types/itinerary'
 import { useMapSync } from '../hooks/useMapSync'
+import { MapPinned } from 'lucide-react'
 
 const MAP_CONTAINER_STYLE = { width: '100%', height: '100%' }
 const DEFAULT_CENTER = { lat: -37.0, lng: 145.5 }
@@ -11,6 +11,7 @@ const LIBRARIES: ('marker' | 'places')[] = ['marker']
 const MAP_ID_PLACEHOLDERS = new Set(['your_map_style_id_here', 'your_map_id_here'])
 
 interface Props {
+  itinerary: Itinerary
   isActivityActive: (id: string) => boolean
   activeDayId: string | null
   onMarkerClick: (activity: Activity) => void
@@ -110,6 +111,7 @@ function getGoogleMapsUrl(activity: Activity): string {
 }
 
 export function TripMap({
+  itinerary,
   isActivityActive,
   activeDayId,
   onMarkerClick,
@@ -171,7 +173,7 @@ export function TripMap({
             .map(a => ({ lat: a.lat!, lng: a.lng! })),
         }))
       ),
-    [isActivityActive, activeDayId]
+    [itinerary.destinations, isActivityActive, activeDayId]
   )
 
   const visibleRoutes = useMemo(
@@ -194,7 +196,7 @@ export function TripMap({
             }))
         )
       ),
-    [isActivityActive, activeDayId]
+    [itinerary.destinations, isActivityActive, activeDayId]
   )
 
   const activeMarkerIds = useMemo(
@@ -243,7 +245,7 @@ export function TripMap({
       }
     }
     return lines
-  }, [isActivityActive])
+  }, [itinerary.destinations, isActivityActive])
 
   const visibleTransitPolylines = activeDayId ? [] : transitPolylines
 
@@ -311,7 +313,7 @@ export function TripMap({
   if (!apiKey) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-card text-muted text-sm gap-4">
-        <div className="text-4xl">🗺️</div>
+        <MapPinned size={36} strokeWidth={1.5} className="text-slate-400" />
         <div className="text-center">
           <div className="font-medium mb-1">Google Maps 未配置</div>
           <div className="text-xs opacity-70">请在 .env.local 中设置 VITE_GOOGLE_MAPS_KEY</div>
@@ -323,7 +325,7 @@ export function TripMap({
   if (!mapId) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-card text-muted text-sm gap-4">
-        <div className="text-4xl">🗺️</div>
+        <MapPinned size={36} strokeWidth={1.5} className="text-slate-400" />
         <div className="text-center">
           <div className="font-medium mb-1">Google Maps Map ID 未配置</div>
           <div className="text-xs opacity-70">地点标记需要在 .env.local 中设置 VITE_GOOGLE_MAPS_MAP_ID</div>
@@ -380,7 +382,7 @@ export function TripMap({
     >
       {/* 当前天路线（带方向箭头）；未选择日期时显示全部天路线 */}
       {visibleRoutes.map(line => {
-        const isPrimary = !activeDayId || line.isActiveDay
+        const isPrimary = Boolean(activeDayId && line.isActiveDay)
 
         return line.path.length >= 2 ? (
           <Polyline
@@ -388,8 +390,8 @@ export function TripMap({
             path={line.path}
             options={{
               strokeColor: line.color,
-              strokeOpacity: isPrimary ? 0.92 : 0.18,
-              strokeWeight: isPrimary ? 5 : 2,
+              strokeOpacity: isPrimary ? 0.88 : 0.24,
+              strokeWeight: isPrimary ? 4 : 2,
               geodesic: true,
               zIndex: isPrimary ? 10 : 1,
               icons: [

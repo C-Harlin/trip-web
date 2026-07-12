@@ -37,6 +37,7 @@ export interface Activity {
   lng?: number
   mapLabel?: string    // 地图标注文字，默认用 title
   googleMapsUrl?: string
+  isAlternative?: boolean
 }
 
 export interface Day {

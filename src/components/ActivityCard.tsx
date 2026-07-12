@@ -5,13 +5,14 @@ import {
   getBookingRequirement,
 } from '../data/booking'
 import type { BookingStatus } from '../types/itinerary'
+import { Building2, CarFront, Hotel, Leaf, Utensils, type LucideIcon } from 'lucide-react'
 
-const TYPE_ICONS: Record<string, string> = {
-  transport: '🚗',
-  attraction: '🏛',
-  food: '🍴',
-  accommodation: '🏨',
-  nature: '🌿',
+const TYPE_ICONS: Record<string, LucideIcon> = {
+  transport: CarFront,
+  attraction: Building2,
+  food: Utensils,
+  accommodation: Hotel,
+  nature: Leaf,
 }
 
 interface Props {
@@ -41,6 +42,7 @@ export function ActivityCard({
 }: Props) {
   const booking = getBookingRequirement(activity.id)
   const status = bookingStatus ?? booking?.status
+  const TypeIcon = TYPE_ICONS[activity.type]
 
   return (
     <div
@@ -50,7 +52,7 @@ export function ActivityCard({
         isFocused
           ? 'bg-card shadow-[0_0_0_2px_rgba(59,130,246,0.18),0_10px_24px_rgba(42,68,82,0.10)]'
           : ''
-      } ${activity.lat ? 'cursor-pointer hover:-translate-y-0.5 hover:bg-[#E7F0F4] hover:shadow-sm' : ''}`}
+      } ${activity.lat ? 'cursor-pointer hover:bg-[#E7F0F4]' : ''}`}
       onMouseEnter={() => onHover?.(activity)}
       onMouseLeave={() => onHover?.(null)}
       onClick={event => {
@@ -82,7 +84,7 @@ export function ActivityCard({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-1">
-          <span className="text-sm flex-shrink-0">{TYPE_ICONS[activity.type]}</span>
+          <TypeIcon size={15} strokeWidth={1.9} className="mt-0.5 flex-shrink-0 text-slate-500" />
           <span
             className={`text-sm font-medium leading-tight ${
               isActive ? 'text-slate-900' : 'text-muted line-through'
@@ -90,6 +92,11 @@ export function ActivityCard({
           >
             {activity.title}
           </span>
+          {activity.isAlternative && (
+            <span className="ml-1 flex-shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+              备选
+            </span>
+          )}
           {booking && status && (
             <span
               className="ml-1 flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"

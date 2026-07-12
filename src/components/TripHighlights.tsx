@@ -1,13 +1,13 @@
-import { itinerary } from '../data/itinerary'
-import type { Activity } from '../types/itinerary'
+import { Building2, CarFront, Hotel, Leaf, Utensils, type LucideIcon } from 'lucide-react'
+import type { Activity, Itinerary } from '../types/itinerary'
 
 const HIGHLIGHT_TYPES = new Set<Activity['type']>(['attraction', 'nature', 'food'])
-const HIGHLIGHT_ICONS: Record<Activity['type'], string> = {
-  transport: '→',
-  attraction: '◇',
-  food: '◐',
-  accommodation: '⌂',
-  nature: '✦',
+const HIGHLIGHT_ICONS: Record<Activity['type'], LucideIcon> = {
+  transport: CarFront,
+  attraction: Building2,
+  food: Utensils,
+  accommodation: Hotel,
+  nature: Leaf,
 }
 
 function getHighlights(activities: Activity[]) {
@@ -24,14 +24,18 @@ function getHighlights(activities: Activity[]) {
     }))
 }
 
-export function TripHighlights() {
-  const days = itinerary.destinations.flatMap(destination =>
-    destination.days.map(day => ({
+export function TripHighlights({ itinerary }: { itinerary: Itinerary }) {
+  const days = itinerary.destinations.flatMap(destination => {
+    const selected = [...destination.days]
+      .sort((a, b) => getHighlights(b.activities).length - getHighlights(a.activities).length)
+      .slice(0, 2)
+      .sort((a, b) => destination.days.indexOf(a) - destination.days.indexOf(b))
+    return selected.map(day => ({
       ...day,
       destination,
       highlights: getHighlights(day.activities),
     }))
-  )
+  })
 
   return (
     <section className="max-w-7xl mx-auto px-6 py-6">
@@ -50,7 +54,7 @@ export function TripHighlights() {
         {days.map(day => (
           <article
             key={day.id}
-            className="group relative w-[260px] flex-shrink-0 overflow-hidden rounded-lg border border-[#D6E4EA] bg-card/92 p-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-card hover:shadow-[0_14px_32px_rgba(42,68,82,0.12)]"
+            className="group relative w-[270px] flex-shrink-0 overflow-hidden rounded-lg border border-[#D6E4EA] bg-card/92 p-3 shadow-sm transition-colors duration-200 hover:bg-white"
           >
             <div
               className="absolute left-0 top-0 h-full w-1"
@@ -75,17 +79,17 @@ export function TripHighlights() {
                 {day.label}
               </div>
 
-              {day.highlights[0] && (
-                <div className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-[#E7F0F4] px-2 py-1 text-xs leading-tight text-slate-600">
-                  <span
-                    className="flex-shrink-0"
-                    style={{ color: day.destination.color }}
-                  >
-                    {HIGHLIGHT_ICONS[day.highlights[0].type]}
-                  </span>
-                  <span className="truncate">{day.highlights[0].title}</span>
-                </div>
-              )}
+              <div className="mt-2 space-y-1.5">
+                {day.highlights.map(highlight => {
+                  const Icon = HIGHLIGHT_ICONS[highlight.type]
+                  return (
+                    <div key={highlight.title} className="flex min-w-0 items-center gap-1.5 text-xs text-slate-600">
+                      <Icon size={13} className="flex-shrink-0" style={{ color: day.destination.color }} />
+                      <span className="truncate">{highlight.title}</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </article>
         ))}

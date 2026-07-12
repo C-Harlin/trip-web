@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Check, Share2 } from 'lucide-react'
 import { buildShareUrl } from '../utils/urlState'
 
 interface Props {
@@ -32,12 +33,12 @@ export function ShareButton({ skipped }: Props) {
     >
       {copied ? (
         <>
-          <span>✓</span>
+          <Check size={16} />
           <span>链接已复制</span>
         </>
       ) : (
         <>
-          <span>🔗</span>
+          <Share2 size={16} />
           <span>分享行程</span>
         </>
       )}

@@ -1,0 +1,17 @@
+{
+  "name": "澳洲行程旅行攻略",
+  "short_name": "澳洲行程",
+  "description": "悉尼、大洋路与墨尔本行程、地图、预订和装箱清单",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EEF5F8",
+  "theme_color": "#EEF5F8",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

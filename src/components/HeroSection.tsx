@@ -1,11 +1,12 @@
-import { itinerary } from '../data/itinerary'
 import { ShareButton } from './ShareButton'
+import type { Itinerary } from '../types/itinerary'
 
 interface Props {
+  itinerary: Itinerary
   skipped: Set<string>
 }
 
-export function HeroSection({ skipped }: Props) {
+export function HeroSection({ itinerary, skipped }: Props) {
   const destinations = itinerary.destinations
 
   const totalDays = destinations.reduce((sum, d) => sum + d.days.length, 0)
@@ -26,12 +27,12 @@ export function HeroSection({ skipped }: Props) {
 
       <div className="relative max-w-7xl mx-auto px-6 py-10 md:py-14">
         <div className="flex items-start justify-between gap-4 mb-10">
-          <div className="max-w-3xl rounded-lg border border-white/55 bg-white/42 p-5 shadow-[0_18px_60px_rgba(42,68,82,0.10)] backdrop-blur-[2px]">
-            <div className="text-slate-500 text-xs tracking-widest uppercase mb-3">旅行攻略</div>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight text-slate-950">
+          <div className="max-w-3xl py-2">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-600">旅行攻略</div>
+            <h1 className="text-4xl font-bold leading-tight tracking-normal text-slate-950 drop-shadow-[0_2px_18px_rgba(255,255,255,0.9)] md:text-6xl">
               {itinerary.title}
             </h1>
-            <p className="text-slate-600 mt-3 text-base md:text-lg">{itinerary.subtitle}</p>
+            <p className="mt-3 text-base font-medium text-slate-700 md:text-lg">{itinerary.subtitle}</p>
           </div>
           <div className="mt-1 flex-shrink-0">
             <ShareButton skipped={skipped} />

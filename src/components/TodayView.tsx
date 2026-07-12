@@ -1,9 +1,9 @@
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, getBookingRequirement } from '../data/booking'
-import { itinerary } from '../data/itinerary'
 import { TRIP_YEAR } from '../data/tripConfig'
-import type { Activity, BookingStatus, Day, Destination } from '../types/itinerary'
+import type { Activity, BookingStatus, Day, Destination, Itinerary } from '../types/itinerary'
 
 interface Props {
+  itinerary: Itinerary
   isActivityActive: (id: string) => boolean
   getBookingStatus: (activityId: string) => BookingStatus | undefined
   onJumpToDay: (dayId: string) => void
@@ -17,12 +17,13 @@ interface DayContext {
 }
 
 export function TodayView({
+  itinerary,
   isActivityActive,
   getBookingStatus,
   onJumpToDay,
   onFocusActivity,
 }: Props) {
-  const days = getDayContexts()
+  const days = getDayContexts(itinerary)
   const todayIso = getTodayIso()
   const exactDay = days.find(item => item.isoDate === todayIso)
   const upcomingDay = days.find(item => item.isoDate >= todayIso) ?? days[days.length - 1]
@@ -77,7 +78,7 @@ export function TodayView({
               </div>
               <button
                 onClick={() => onJumpToDay(current.day.id)}
-                className="mt-4 w-full rounded-lg border border-[#D6E4EA] bg-[#EEF5F8] px-3 py-2 text-sm font-semibold text-slate-700 transition-all hover:-translate-y-0.5 hover:bg-card hover:shadow-sm"
+                className="mt-4 w-full rounded-lg border border-[#D6E4EA] bg-[#EEF5F8] px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-card"
               >
                 跳到这一天
               </button>
@@ -94,7 +95,7 @@ export function TodayView({
                 <button
                   key={activity.id}
                   onClick={() => onFocusActivity(activity)}
-                  className="group rounded-lg border border-[#D6E4EA] bg-[#F7FBFC] p-3 text-left transition-all hover:-translate-y-0.5 hover:bg-card hover:shadow-sm"
+                  className="group rounded-lg border border-[#D6E4EA] bg-[#F7FBFC] p-3 text-left transition-colors hover:bg-card"
                 >
                   <div className="flex items-start gap-2">
                     <span
@@ -153,7 +154,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function getDayContexts(): DayContext[] {
+function getDayContexts(itinerary: Itinerary): DayContext[] {
   return itinerary.destinations.flatMap(destination =>
     destination.days.map(day => ({
       day,

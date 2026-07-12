@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Activity, Day, Destination } from '../types/itinerary'
 import { getDayWeather, type DayWeather } from '../services/weather'
 import { getOutfitAdvice } from '../utils/outfitAdvice'
+import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Snowflake, Sun, type LucideIcon } from 'lucide-react'
 
 interface Props {
   day: Day
@@ -51,6 +52,7 @@ export function WeatherPanel({ day, destination, activities }: Props) {
   }
 
   const sourceLabel = weather.source === 'forecast' ? '实时预报' : '季节参考'
+  const WeatherIcon = getWeatherIcon(weather.weatherCode)
 
   return (
     <div
@@ -67,7 +69,7 @@ export function WeatherPanel({ day, destination, activities }: Props) {
           style={{ background: destination.color + '22', color: destination.color }}
           aria-hidden="true"
         >
-          {getWeatherIcon(weather.weatherCode)}
+          <WeatherIcon size={22} strokeWidth={1.8} />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -135,12 +137,12 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function getWeatherIcon(code: number): string {
-  if (code === 0) return '☀'
-  if (code <= 3) return '⛅'
-  if (code <= 48) return '🌫'
-  if (code <= 67) return '🌧'
-  if (code <= 77) return '❄'
-  if (code <= 82) return '🌦'
-  return '⛈'
+function getWeatherIcon(code: number): LucideIcon {
+  if (code === 0) return Sun
+  if (code <= 3) return CloudSun
+  if (code <= 48) return CloudFog
+  if (code <= 67) return CloudRain
+  if (code <= 77) return Snowflake
+  if (code <= 82) return Cloud
+  return CloudLightning
 }
