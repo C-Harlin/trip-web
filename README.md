@@ -21,7 +21,7 @@
 
 - Node.js 20、22 或 24+
 - Google Maps API Key
-- Google Maps Map ID（地点标记依赖 Advanced Markers，必须配置；本地测试可临时使用 `DEMO_MAP_ID`）
+- Google Maps Map ID（可选；配置后使用 Advanced Markers 和云端地图样式）
 
 ### 快速开始
 
@@ -31,7 +31,7 @@ npm install
 
 # 配置环境变量
 cp .env.example .env.local
-# 编辑 .env.local，至少填入 Google Maps API Key 和 Map ID
+# 编辑 .env.local，至少填入 Google Maps API Key
 
 # 启动开发服务器
 npm run dev
@@ -43,16 +43,16 @@ npm run dev
 1. 前往 [Google Cloud Console](https://console.cloud.google.com)
 2. 创建项目或选择现有项目
 3. 启用 **Maps JavaScript API**
-4. 创建 API Key（建议限制域名）
-5. 在 **Map Management** 创建 JavaScript 类型 Map ID（地点标记必需）
-6. 可选：在 Map Styles 创建深色主题样式，并关联到该 Map ID
+4. 创建 API Key，并在网站限制中加入本地地址（如 `http://localhost:*/*` 和 `http://127.0.0.1:*/*`）及正式域名
+5. 可选：在 **Map Management** 创建 JavaScript 类型 Map ID，以启用 Advanced Markers
+6. 可选：在 Map Styles 创建自定义样式，并关联到该 Map ID
 
 ### 环境变量
 
 ```bash
 # .env.local（不提交 Git）
 VITE_GOOGLE_MAPS_KEY=your_api_key_here
-VITE_GOOGLE_MAPS_MAP_ID=your_map_id_here   # 本地测试可临时使用 DEMO_MAP_ID
+VITE_GOOGLE_MAPS_MAP_ID=your_map_id_here   # 可选
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
@@ -79,7 +79,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 3. **配置环境变量**（Vercel Dashboard → Settings → Environment Variables）
    - `VITE_GOOGLE_MAPS_KEY`
-   - `VITE_GOOGLE_MAPS_MAP_ID`
+   - `VITE_GOOGLE_MAPS_MAP_ID`（可选）
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
 

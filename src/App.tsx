@@ -7,6 +7,7 @@ import { TravelPrepPanel } from './components/TravelPrepPanel'
 import { ItineraryLayout } from './components/ItineraryLayout'
 import { DayList } from './components/DayList'
 import { TripMap } from './components/TripMap'
+import { MapErrorBoundary } from './components/MapErrorBoundary'
 import { CustomizerDrawer } from './components/CustomizerDrawer'
 import { MobileBottomNav } from './components/MobileBottomNav'
 import { OfflineStatus } from './components/OfflineStatus'
@@ -156,15 +157,17 @@ export default function App() {
   }, [isMobile, navigate, scrollToDay, scrollToMap, view])
 
   const renderTripMap = () => (
-    <TripMap
-      itinerary={itinerary}
-      isActivityActive={isActivityActive}
-      activeDayId={activeDayId}
-      onMarkerClick={handleMarkerClick}
-      hoveredActivity={hoveredActivity}
-      focusedActivity={focusedActivity}
-      focusSignal={focusSignal}
-    />
+    <MapErrorBoundary>
+      <TripMap
+        itinerary={itinerary}
+        isActivityActive={isActivityActive}
+        activeDayId={activeDayId}
+        onMarkerClick={handleMarkerClick}
+        hoveredActivity={hoveredActivity}
+        focusedActivity={focusedActivity}
+        focusSignal={focusSignal}
+      />
+    </MapErrorBoundary>
   )
 
   if (view !== 'home') {

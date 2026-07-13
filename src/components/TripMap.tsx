@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { GoogleMap, useJsApiLoader, Polyline, InfoWindow } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, Polyline, InfoWindow, MarkerF } from '@react-google-maps/api'
 import type { Activity, Itinerary } from '../types/itinerary'
 import { useMapSync } from '../hooks/useMapSync'
 import { MapPinned } from 'lucide-react'
@@ -9,6 +9,23 @@ const DEFAULT_CENTER = { lat: -37.0, lng: 145.5 }
 const DEFAULT_ZOOM = 6
 const LIBRARIES: ('marker' | 'places')[] = ['marker']
 const MAP_ID_PLACEHOLDERS = new Set(['your_map_style_id_here', 'your_map_id_here'])
+const MAP_AUTH_FAILURE_EVENT = 'trip-map-auth-failure'
+let googleMapsAuthFailed = false
+
+declare global {
+  interface Window {
+    gm_authFailure?: () => void
+  }
+}
+
+if (typeof window !== 'undefined') {
+  const previousAuthFailure = window.gm_authFailure
+  window.gm_authFailure = () => {
+    previousAuthFailure?.()
+    googleMapsAuthFailed = true
+    window.dispatchEvent(new Event(MAP_AUTH_FAILURE_EVENT))
+  }
+}
 
 interface Props {
   itinerary: Itinerary
@@ -131,9 +148,16 @@ export function TripMap({
 
   const { onMapLoad, panToDay, panToActivity } = useMapSync()
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
+  const [authFailed, setAuthFailed] = useState(googleMapsAuthFailed)
   const mapRef = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<Map<string, google.maps.marker.AdvancedMarkerElement>>(new Map())
   const prevDayId = useRef<string | null>(null)
+
+  useEffect(() => {
+    const handleAuthFailure = () => setAuthFailed(true)
+    window.addEventListener(MAP_AUTH_FAILURE_EVENT, handleAuthFailure)
+    return () => window.removeEventListener(MAP_AUTH_FAILURE_EVENT, handleAuthFailure)
+  }, [])
 
   // Pan to day when activeDayId changes
   useEffect(() => {
@@ -297,8 +321,8 @@ export function TripMap({
   useEffect(() => {
     const markerStore = markersRef.current
 
-    if (mapRef.current && isLoaded) {
-      // Check if AdvancedMarkerElement is available (requires mapId)
+    if (mapId && mapRef.current && isLoaded) {
+      // Advanced markers are used only when a cloud Map ID is configured.
       if (typeof google !== 'undefined' && google.maps.marker?.AdvancedMarkerElement) {
         renderMarkersOnMap(mapRef.current)
       }
@@ -308,7 +332,7 @@ export function TripMap({
       markerStore.forEach(m => { m.map = null })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markers, isLoaded, activeDayId])
+  }, [markers, isLoaded, activeDayId, mapId])
 
   if (!apiKey) {
     return (
@@ -322,22 +346,31 @@ export function TripMap({
     )
   }
 
-  if (!mapId) {
+  if (loadError) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-card text-muted text-sm gap-4">
-        <MapPinned size={36} strokeWidth={1.5} className="text-slate-400" />
-        <div className="text-center">
-          <div className="font-medium mb-1">Google Maps Map ID 未配置</div>
-          <div className="text-xs opacity-70">地点标记需要在 .env.local 中设置 VITE_GOOGLE_MAPS_MAP_ID</div>
+      <div className="flex h-full min-h-64 w-full flex-col items-center justify-center gap-3 bg-[#E8F0F2] px-6 text-center text-sm text-slate-600">
+        <MapPinned size={34} strokeWidth={1.5} className="text-slate-500" />
+        <div>
+          <div className="font-semibold text-slate-800">地图加载失败</div>
+          <div className="mt-1 text-xs text-slate-500">请检查 API Key、网站来源限制和 Maps JavaScript API</div>
         </div>
       </div>
     )
   }
 
-  if (loadError) {
+  if (authFailed) {
+    const allowedOrigin = `${window.location.origin}/*`
+
     return (
-      <div className="w-full h-full flex items-center justify-center bg-card text-muted text-sm">
-        地图加载失败，请检查 API Key 配置
+      <div className="flex h-full min-h-64 w-full flex-col items-center justify-center gap-3 bg-[#E8F0F2] px-6 text-center text-sm text-slate-600">
+        <MapPinned size={34} strokeWidth={1.5} className="text-slate-500" />
+        <div>
+          <div className="font-semibold text-slate-800">当前网址未获地图授权</div>
+          <div className="mt-1 text-xs text-slate-500">请将以下来源加入 Google Maps API Key 的网站限制</div>
+          <code className="mt-2 block break-all rounded bg-white/80 px-2 py-1 text-[11px] text-slate-700">
+            {allowedOrigin}
+          </code>
+        </div>
       </div>
     )
   }
@@ -366,20 +399,47 @@ export function TripMap({
         streetViewControl: false,
         mapTypeControl: false,
         fullscreenControl: false,
-        styles: mapId
-          ? undefined
-          : [
-              { elementType: 'geometry', stylers: [{ color: '#212121' }] },
-              { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-              { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-              { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
-              { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
-              { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
-              { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
-              { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212121' }] },
-            ],
+        styles: mapId ? undefined : [
+          { elementType: 'geometry', stylers: [{ color: '#EAF0F1' }] },
+          { elementType: 'labels.icon', stylers: [{ saturation: -45 }, { lightness: 8 }] },
+          { elementType: 'labels.text.fill', stylers: [{ color: '#53636B' }] },
+          { elementType: 'labels.text.stroke', stylers: [{ color: '#F7FAFA' }] },
+          { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#DDE9E4' }] },
+          { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#FFFFFF' }] },
+          { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#D3DEE2' }] },
+          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#C9E0E8' }] },
+        ],
       }}
     >
+      {/* Map ID is optional. Standard markers keep the map usable without cloud styling. */}
+      {!mapId && markers.map(({ activity, color, isActiveDay, sequence }) => (
+        <MarkerF
+          key={activity.id}
+          position={{ lat: activity.lat!, lng: activity.lng! }}
+          title={activity.mapLabel ?? activity.title}
+          zIndex={isActiveDay ? 20 : 1}
+          label={isActiveDay ? {
+            text: String(sequence),
+            color: '#FFFFFF',
+            fontSize: '11px',
+            fontWeight: '800',
+          } : undefined}
+          icon={{
+            path: window.google.maps.SymbolPath.CIRCLE,
+            fillColor: color,
+            fillOpacity: isActiveDay ? 1 : 0.48,
+            strokeColor: '#FFFFFF',
+            strokeOpacity: isActiveDay ? 1 : 0.7,
+            strokeWeight: isActiveDay ? 2 : 1,
+            scale: isActiveDay ? 11 : 5,
+          }}
+          onClick={() => {
+            setSelectedActivity(activity)
+            onMarkerClick(activity)
+          }}
+        />
+      ))}
+
       {/* 当前天路线（带方向箭头）；未选择日期时显示全部天路线 */}
       {visibleRoutes.map(line => {
         const isPrimary = Boolean(activeDayId && line.isActiveDay)
