@@ -55,17 +55,19 @@ VITE_GOOGLE_MAPS_KEY=your_api_key_here
 VITE_GOOGLE_MAPS_MAP_ID=your_map_id_here   # 可选
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_OWNER_EMAIL=owner@example.com          # 推荐：限制行程所有者邮箱
 ```
 
 ### 启用多人协作
 
 1. 在 Supabase 创建项目。
-2. 打开 SQL Editor，执行 `supabase/schema.sql`。
+2. 打开 SQL Editor，完整执行最新的 `supabase/schema.sql`。
 3. 在 Authentication → URL Configuration 中加入本地和正式站点地址。
-4. 将 Project Settings → API 中的 Project URL 和 anon key 写入 `.env.local`。
-5. 重启开发服务，点击页面头部的“协作”。
+4. 在 Authentication → Sign In / Providers 中开启 Anonymous Sign-Ins。
+5. 将 Project URL、publishable/anon key 和所有者邮箱写入 `.env.local`。
+6. 重启开发服务，所有者通过邮箱登录后会自动创建或恢复共享行程。
 
-未配置 Supabase 时应用自动保持本地模式，已有编辑功能不受影响。协作链接包含 `trip` 和 `invite` 参数；首次打开的成员需要通过邮箱登录，随后自动加入行程。
+所有者在协作面板填写朋友名字即可生成一次性邀请链接。朋友打开链接后自动建立访客会话并加入同一行程，无需邮箱登录；邀请 7 天内有效且只能由一位成员接受。所有者可以撤销待接受邀请或移除已加入成员。未配置 Supabase 时应用自动保持本地模式，已有编辑功能不受影响。
 
 ---
 
@@ -82,6 +84,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    - `VITE_GOOGLE_MAPS_MAP_ID`（可选）
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_OWNER_EMAIL`
 
 4. 点击 **Deploy**，每次 `git push` 自动重新部署
 

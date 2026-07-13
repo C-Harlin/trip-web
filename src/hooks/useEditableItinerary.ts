@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { itinerary as baseItinerary } from '../data/itinerary'
 import { isSupabaseConfigured } from '../services/supabaseConfig'
-import type { DayActivities } from '../services/tripRepository'
+import type { DayActivities, TripInvite, TripMember } from '../services/tripRepository'
 import type { Activity, Itinerary } from '../types/itinerary'
 
 const STORAGE_KEY = 'trip-itinerary-edits-v1'
@@ -20,10 +20,17 @@ export interface CollaborationController {
   tripId: string | null
   status: CollaborationStatus
   userEmail: string | null
+  isAnonymous: boolean
+  role: TripMember['role'] | null
+  members: TripMember[]
+  invites: TripInvite[]
   magicLinkSent: boolean
   error: string | null
   requestMagicLink: (email: string) => Promise<void>
-  createSharedTrip: () => Promise<string | null>
+  createInvite: (label: string) => Promise<string>
+  revokeInvite: (inviteId: string) => Promise<void>
+  removeMember: (userId: string) => Promise<void>
+  refreshCollaboration: () => Promise<void>
   leaveCloudTrip: () => Promise<void>
 }
 
@@ -45,6 +52,14 @@ function getTripIdFromUrl() {
 
 function getInviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get('invite')
+}
+
+function attachTripToUrl(tripId: string) {
+  const url = new URL(window.location.href)
+  url.searchParams.set('trip', tripId)
+  url.searchParams.delete('invite')
+  url.hash = ''
+  window.history.replaceState({}, '', url)
 }
 
 function consumeAuthError(): string | null {
@@ -70,6 +85,11 @@ export function useEditableItinerary() {
   const [tripId, setTripId] = useState<string | null>(getTripIdFromUrl)
   const [status, setStatus] = useState<CollaborationStatus>('local')
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isAnonymous, setIsAnonymous] = useState(false)
+  const [role, setRole] = useState<TripMember['role'] | null>(null)
+  const [members, setMembers] = useState<TripMember[]>([])
+  const [invites, setInvites] = useState<TripInvite[]>([])
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(consumeAuthError)
   const versionRef = useRef<number | null>(null)
@@ -78,6 +98,90 @@ export function useEditableItinerary() {
   const editsRef = useRef(edits)
 
   useEffect(() => { editsRef.current = edits }, [edits])
+
+  // Resolve an owner session or claim a one-time guest invitation before loading a trip.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+
+    let active = true
+    const inviteToken = getInviteTokenFromUrl()
+
+    import('../services/tripRepository')
+      .then(async repository => {
+        let user = await repository.getCurrentUser()
+
+        // Existing owners/members may still have the legacy reusable invite in
+        // their bookmarked URL. Keep the trip and silently remove that token.
+        if (inviteToken && tripId && user) {
+          try {
+            await repository.loadCloudTrip(tripId)
+            if (!active) return
+            setCurrentUserId(user.id)
+            setUserEmail(user.email ?? null)
+            setIsAnonymous(Boolean(user.is_anonymous))
+            attachTripToUrl(tripId)
+            return
+          } catch {
+            // Not a member yet; continue with the one-time invitation claim.
+          }
+        }
+
+        if (inviteToken) {
+          if (!user) user = await repository.signInAsGuest()
+          if (!user) throw new Error('guest_session_failed')
+          const acceptedTripId = await repository.acceptTripInvite(inviteToken)
+          if (!active) return
+          setCurrentUserId(user.id)
+          setUserEmail(user.email ?? null)
+          setIsAnonymous(Boolean(user.is_anonymous))
+          attachTripToUrl(acceptedTripId)
+          setTripId(acceptedTripId)
+          return
+        }
+
+        if (tripId || !user) {
+          if (!user) setStatus('sign-in')
+          return
+        }
+
+        if (user.is_anonymous) {
+          setSyncError('此访客会话没有可加入的邀请，请向行程所有者索取新链接。')
+          setStatus('error')
+          return
+        }
+
+        const configuredOwnerEmail = import.meta.env.VITE_OWNER_EMAIL?.trim().toLowerCase()
+        if (configuredOwnerEmail && user.email?.toLowerCase() !== configuredOwnerEmail) {
+          setSyncError('该邮箱不是此行程的所有者，请使用邀请链接加入。')
+          setStatus('error')
+          return
+        }
+
+        let trip = await repository.findOwnedCloudTrip(user.id)
+        if (!trip) trip = await repository.createCloudTrip(baseItinerary.title, editsRef.current)
+        if (!active) return
+        setCurrentUserId(user.id)
+        setUserEmail(user.email ?? null)
+        setIsAnonymous(false)
+        attachTripToUrl(trip.id)
+        setTripId(trip.id)
+      })
+      .catch(error => {
+        if (!active) return
+        const message = error instanceof Error ? error.message : String(error)
+        const friendlyMessage = message.includes('Anonymous sign-ins are disabled')
+          ? '访客加入尚未启用，请在 Supabase Auth 中开启 Anonymous Sign-Ins。'
+          : message.includes('invite_')
+            ? '邀请链接无效、已使用或已过期，请联系行程所有者重新邀请。'
+            : message
+        setSyncError(friendlyMessage)
+        setStatus('error')
+      })
+
+    return () => { active = false }
+  // The initial URL/session is the source of truth for this bootstrap.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!isSupabaseConfigured || !tripId) {
@@ -98,14 +202,21 @@ export function useEditableItinerary() {
           return
         }
         userReadyRef.current = true
+        setCurrentUserId(user.id)
         setUserEmail(user.email ?? null)
-        const inviteToken = getInviteTokenFromUrl()
-        if (inviteToken) await repository.joinCloudTrip(tripId, inviteToken)
+        setIsAnonymous(Boolean(user.is_anonymous))
         const trip = await repository.loadCloudTrip(tripId)
+        const nextMembers = await repository.listTripMembers(tripId)
         if (!active) return
+        const nextRole = nextMembers.find(member => member.user_id === user.id)?.role
+          ?? (trip.owner_id === user.id ? 'owner' : null)
+        if (!nextRole) throw new Error('membership_required')
         versionRef.current = trip.version
         setEdits(trip.document)
         writeEdits(trip.document)
+        setMembers(nextMembers)
+        setRole(nextRole)
+        setInvites(nextRole === 'owner' ? await repository.listTripInvites(tripId) : [])
         setStatus('synced')
         unsubscribe = repository.subscribeToCloudTrip(tripId, next => {
           if (next.version <= (versionRef.current ?? 0)) return
@@ -196,28 +307,55 @@ export function useEditableItinerary() {
     setMagicLinkSent(true)
   }, [])
 
-  const createSharedTrip = useCallback(async () => {
-    const { createCloudTrip, getCurrentUser } = await import('../services/tripRepository')
-    const user = await getCurrentUser()
-    if (!user) {
-      setStatus('sign-in')
-      return null
-    }
-    const trip = await createCloudTrip(baseItinerary.title, editsRef.current)
-    const url = new URL(window.location.href)
-    url.searchParams.set('trip', trip.id)
-    if (trip.invite_token) url.searchParams.set('invite', trip.invite_token)
-    window.history.replaceState({}, '', url)
-    setTripId(trip.id)
-    return trip.id
-  }, [])
+  const refreshCollaboration = useCallback(async () => {
+    if (!tripId || !currentUserId) return
+    const repository = await import('../services/tripRepository')
+    const nextMembers = await repository.listTripMembers(tripId)
+    const nextRole = nextMembers.find(member => member.user_id === currentUserId)?.role ?? null
+    setMembers(nextMembers)
+    setRole(nextRole)
+    setInvites(nextRole === 'owner' ? await repository.listTripInvites(tripId) : [])
+  }, [currentUserId, tripId])
+
+  const createInvite = useCallback(async (label: string) => {
+    if (!tripId || role !== 'owner') throw new Error('仅行程所有者可以邀请成员。')
+    const repository = await import('../services/tripRepository')
+    const invite = await repository.createTripInvite(tripId, label)
+    await refreshCollaboration()
+    const url = new URL(window.location.origin + window.location.pathname)
+    url.searchParams.set('invite', invite.token)
+    return url.toString()
+  }, [refreshCollaboration, role, tripId])
+
+  const revokeInvite = useCallback(async (inviteId: string) => {
+    const repository = await import('../services/tripRepository')
+    await repository.revokeTripInvite(inviteId)
+    await refreshCollaboration()
+  }, [refreshCollaboration])
+
+  const removeMember = useCallback(async (userId: string) => {
+    if (!tripId) return
+    const repository = await import('../services/tripRepository')
+    await repository.removeTripMember(tripId, userId)
+    await refreshCollaboration()
+  }, [refreshCollaboration, tripId])
 
   const leaveCloudTrip = useCallback(async () => {
     const { signOut } = await import('../services/tripRepository')
     await signOut()
+    const url = new URL(window.location.href)
+    url.searchParams.delete('trip')
+    url.searchParams.delete('invite')
+    window.history.replaceState({}, '', url)
+    setTripId(null)
+    setCurrentUserId(null)
     setUserEmail(null)
-    setStatus(tripId ? 'sign-in' : 'local')
-  }, [tripId])
+    setIsAnonymous(false)
+    setRole(null)
+    setMembers([])
+    setInvites([])
+    setStatus('sign-in')
+  }, [])
 
   const itinerary = useMemo<Itinerary>(() => ({
     ...baseItinerary,
@@ -242,10 +380,17 @@ export function useEditableItinerary() {
       tripId,
       status,
       userEmail,
+      isAnonymous,
+      role,
+      members,
+      invites,
       magicLinkSent,
       error: syncError,
       requestMagicLink,
-      createSharedTrip,
+      createInvite,
+      revokeInvite,
+      removeMember,
+      refreshCollaboration,
       leaveCloudTrip,
     },
   }
