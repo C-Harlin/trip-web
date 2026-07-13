@@ -110,6 +110,7 @@ export function CollaborationButton({ collaboration }: Props) {
                 <input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="name@example.com" className="input" />
                 <button type="button" disabled={busy || !email.trim()} onClick={sendLink} className="w-full rounded-lg border border-[#CADAE2] bg-[#EEF5F8] px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50">发送登录链接</button>
                 {(message || collaboration.magicLinkSent) && <p className="text-center text-xs text-slate-500">{message ?? '登录链接已发送，请检查邮箱。'}</p>}
+                {collaboration.error && <p className="text-center text-xs text-rose-600">{collaboration.error}</p>}
               </div>
             )}
           </div>

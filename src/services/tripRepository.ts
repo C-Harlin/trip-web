@@ -20,14 +20,16 @@ function requireClient() {
 
 export async function getCurrentUser() {
   const { data, error } = await requireClient().auth.getUser()
-  if (error) throw error
+  if (error && error.name !== 'AuthSessionMissingError') throw error
   return data.user
 }
 
 export async function sendMagicLink(email: string) {
+  const redirectUrl = new URL(window.location.href)
+  redirectUrl.hash = ''
   const { error } = await requireClient().auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.href },
+    options: { emailRedirectTo: redirectUrl.toString() },
   })
   if (error) throw error
 }

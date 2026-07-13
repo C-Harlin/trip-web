@@ -47,6 +47,18 @@ function getInviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get('invite')
 }
 
+function consumeAuthError(): string | null {
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const errorCode = params.get('error_code')
+  if (!params.get('error') && !errorCode) return null
+
+  window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
+  if (errorCode === 'otp_expired') {
+    return '登录链接已失效或已被使用，请重新发送并只打开最新一封邮件。'
+  }
+  return params.get('error_description')?.replaceAll('+', ' ') ?? '邮箱登录失败，请重新发送登录链接。'
+}
+
 function getBaseActivities(dayId: string) {
   return baseItinerary.destinations
     .flatMap(destination => destination.days)
@@ -59,7 +71,7 @@ export function useEditableItinerary() {
   const [status, setStatus] = useState<CollaborationStatus>('local')
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
-  const [syncError, setSyncError] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(consumeAuthError)
   const versionRef = useRef<number | null>(null)
   const userReadyRef = useRef(false)
   const saveQueueRef = useRef(Promise.resolve())
@@ -179,6 +191,7 @@ export function useEditableItinerary() {
 
   const requestMagicLink = useCallback(async (email: string) => {
     const { sendMagicLink } = await import('../services/tripRepository')
+    setSyncError(null)
     await sendMagicLink(email)
     setMagicLinkSent(true)
   }, [])
